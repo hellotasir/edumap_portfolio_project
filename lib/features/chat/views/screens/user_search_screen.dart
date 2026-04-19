@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
 import 'package:flutter_education_app/features/chat/models/conversation_model.dart';
+import 'package:flutter_education_app/features/chat/models/friend_request_model.dart';
 import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
 import 'chat_screen.dart';
 
@@ -271,8 +272,7 @@ class _UserResultTile extends StatefulWidget {
 }
 
 class _UserResultTileState extends State<_UserResultTile> {
-  bool _requestSent = false;
-  bool _isFriend = false;
+  _FriendStatus _status = _FriendStatus.none;
   bool _loading = true;
 
   String get _otherUserId =>
@@ -285,34 +285,63 @@ class _UserResultTileState extends State<_UserResultTile> {
   }
 
   Future<void> _checkFriendStatus() async {
-    final friend = await widget.chatRepository.areFriends(
-      widget.currentUserId,
-      _otherUserId,
-    );
-    final sentReq = await widget.chatRepository.getRequestBetween(
-      widget.currentUserId,
-      _otherUserId,
-    );
+    final results = await Future.wait([
+      widget.chatRepository.areFriends(widget.currentUserId, _otherUserId),
+      widget.chatRepository.getRequestBetween(
+        widget.currentUserId,
+        _otherUserId,
+      ),
+    ]);
 
-    if (mounted) {
-      setState(() {
-        _isFriend = friend;
-        _requestSent = sentReq?.status == FriendRequestStatus.pending;
-        _loading = false;
-      });
+    final isFriend = results[0] as bool;
+    final request = results[1] as FriendRequestModel?;
+
+    if (!mounted) return;
+
+    _FriendStatus status;
+    if (isFriend) {
+      status = _FriendStatus.friends;
+    } else if (request != null &&
+        request.status == FriendRequestStatus.pending) {
+      if (request.fromUserId == widget.currentUserId) {
+        status = _FriendStatus.requestSent;
+      } else {
+        status = _FriendStatus.requestReceived;
+      }
+    } else {
+      status = _FriendStatus.none;
     }
+
+    setState(() {
+      _status = status;
+      _loading = false;
+    });
   }
 
   Future<void> _sendRequest() async {
     final username = widget.user['username'] as String? ?? '';
-    await widget.chatRepository.sendFriendRequest(
-      fromUserId: widget.currentUserId,
-      fromUsername: widget.currentUsername,
-      fromProfilePhoto: widget.currentProfilePhoto,
-      toUserId: _otherUserId,
-      toUsername: username,
-    );
-    if (mounted) setState(() => _requestSent = true);
+    try {
+      await widget.chatRepository.sendFriendRequest(
+        fromUserId: widget.currentUserId,
+        fromUsername: widget.currentUsername,
+        fromProfilePhoto: widget.currentProfilePhoto,
+        toUserId: _otherUserId,
+        toUsername: username,
+      );
+      if (mounted) setState(() => _status = _FriendStatus.requestSent);
+    } on DuplicateFriendRequestException catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.message),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+      await _checkFriendStatus();
+    }
   }
 
   @override
@@ -320,7 +349,6 @@ class _UserResultTileState extends State<_UserResultTile> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-  
     final username = widget.user['username'] as String? ?? 'Unknown';
     final fullName = widget.user['full_name'] as String? ?? '';
     final photoUrl = widget.user['profile_photo'] as String? ?? '';
@@ -331,7 +359,6 @@ class _UserResultTileState extends State<_UserResultTile> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Row(
           children: [
-         
             CircleAvatar(
               radius: 26,
               backgroundColor: colorScheme.surfaceContainerHighest,
@@ -348,8 +375,6 @@ class _UserResultTileState extends State<_UserResultTile> {
                   : null,
             ),
             const SizedBox(width: 14),
-
-         
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -378,53 +403,67 @@ class _UserResultTileState extends State<_UserResultTile> {
               ),
             ),
             const SizedBox(width: 10),
-
-        
             if (widget.isGroupAddMode)
               Icon(
                 Icons.add_circle_outline,
                 color: colorScheme.primary,
                 size: 24,
               )
+            else if (_loading)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+              )
             else
-              _loading
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator.adaptive(strokeWidth: 2),
-                    )
-                  : _isFriend
-                  ? _StatusChip(
-                      label: 'Friends',
-                      colorScheme: colorScheme,
-                      textTheme: textTheme,
-                      isMuted: false,
-                    )
-                  : _requestSent
-                  ? _StatusChip(
-                      label: 'Requested',
-                      colorScheme: colorScheme,
-                      textTheme: textTheme,
-                      isMuted: true,
-                    )
-                  : FilledButton(
-                      onPressed: _sendRequest,
-                      style: FilledButton.styleFrom(
-                        minimumSize: const Size(0, 36),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: const Text('Add'),
-                    ),
+              _buildTrailingAction(colorScheme, textTheme),
           ],
         ),
       ),
     );
   }
+
+  Widget _buildTrailingAction(ColorScheme colorScheme, TextTheme textTheme) {
+    switch (_status) {
+      case _FriendStatus.friends:
+        return _StatusChip(
+          label: 'Friends',
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          isMuted: false,
+        );
+      case _FriendStatus.requestSent:
+        return _StatusChip(
+          label: 'Requested',
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          isMuted: true,
+        );
+      case _FriendStatus.requestReceived:
+        return _StatusChip(
+          label: 'Respond',
+          colorScheme: colorScheme,
+          textTheme: textTheme,
+          isMuted: false,
+        );
+      case _FriendStatus.none:
+        return FilledButton(
+          onPressed: _sendRequest,
+          style: FilledButton.styleFrom(
+            minimumSize: const Size(0, 36),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+          ),
+          child: const Text('Add'),
+        );
+    }
+  }
 }
+
+enum _FriendStatus { none, requestSent, requestReceived, friends }
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({

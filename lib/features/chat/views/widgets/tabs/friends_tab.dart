@@ -74,7 +74,7 @@ class _FriendsTabState extends State<FriendsTab> {
             final username = friend['username'] as String? ?? 'Unknown';
             final fullName = friend['full_name'] as String? ?? '';
             final photoUrl = friend['profile_photo'] as String? ?? '';
-            final requestId = friend['request_id'] as String? ?? '';
+            final friendDocId = friend['friend_doc_id'] as String? ?? '';
 
             final displayName = fullName.isNotEmpty ? fullName : username;
 
@@ -133,7 +133,7 @@ class _FriendsTabState extends State<FriendsTab> {
                   } else if (value == 'remove') {
                     await _confirmRemoveFriend(
                       context,
-                      requestId: requestId,
+                      friendDocId: friendDocId,
                       name: displayName,
                     );
                   }
@@ -189,7 +189,7 @@ class _FriendsTabState extends State<FriendsTab> {
 
   Future<void> _confirmRemoveFriend(
     BuildContext context, {
-    required String requestId,
+    required String friendDocId,
     required String name,
   }) async {
     final colorScheme = Theme.of(context).colorScheme;
@@ -209,8 +209,8 @@ class _FriendsTabState extends State<FriendsTab> {
           TextButton(
             style: TextButton.styleFrom(foregroundColor: colorScheme.error),
             onPressed: () async {
-              if (requestId.isEmpty) return;
-              await widget.chatRepository.removeFriend(requestId);
+              if (friendDocId.isEmpty) return;
+              await widget.chatRepository.removeFriend(friendDocId);
               if (dialogContext.mounted) Navigator.pop(dialogContext);
               _reloadFriends();
             },

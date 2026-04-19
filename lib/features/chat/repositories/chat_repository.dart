@@ -276,10 +276,6 @@ class ChatRepository {
        _storageRepository = storageRepository ?? StorageRepository();
 
   final FirebaseFirestore _firestore;
-
-  /// Storage access is now done through [StorageRepository] so that all
-  /// upload results are wrapped in [StorageResult] and errors are handled
-  /// consistently, without exposing the low-level [StorageService] directly.
   final StorageRepository _storageRepository;
 
   final _LocalCache _cache = _LocalCache.instance;
@@ -297,6 +293,9 @@ class ChatRepository {
   CollectionReference<Map<String, dynamic>> get _friendRequests =>
       _firestore.collection('friend_requests');
 
+  CollectionReference<Map<String, dynamic>> get _friends =>
+      _firestore.collection('friends');
+
   CollectionReference<Map<String, dynamic>> get _profiles =>
       _firestore.collection('profiles');
 
@@ -307,10 +306,6 @@ class ChatRepository {
 
   bool isConversationBusy(String conversationId) =>
       _sendQueue.isBusy(conversationId);
-
-  // ──────────────────────────────────────────────
-  // Profile helpers
-  // ──────────────────────────────────────────────
 
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     if (userId.isEmpty) return null;
@@ -352,10 +347,6 @@ class ChatRepository {
       'profile_photo': profileMap['profile_photo'] as String? ?? '',
     };
   }
-
-  // ──────────────────────────────────────────────
-  // Conversations
-  // ──────────────────────────────────────────────
 
   Stream<List<ConversationModel>> watchConversations(String userId) {
     late StreamController<List<ConversationModel>> controller;
@@ -547,10 +538,6 @@ class ChatRepository {
   Future<void> deleteConversation(String conversationId) =>
       _conversations.doc(conversationId).update({'is_active': false});
 
-  // ──────────────────────────────────────────────
-  // Messages
-  // ──────────────────────────────────────────────
-
   Future<ChatMessageModel> sendMessage({
     required String conversationId,
     required String senderId,
@@ -741,12 +728,6 @@ class ChatRepository {
     await _cache.softDeleteMessage(messageId);
   }
 
-  // ──────────────────────────────────────────────
-  // Storage — now via StorageRepository
-  // ──────────────────────────────────────────────
-
-  /// Uploads a chat media file (image, video, audio, document).
-  /// Throws [Exception] if the upload fails, so callers can handle it normally.
   Future<String> uploadChatMedia({
     required File file,
     required String senderId,
@@ -761,8 +742,6 @@ class ChatRepository {
     return result.data!;
   }
 
-  /// Uploads a video thumbnail.
-  /// Throws [Exception] if the upload fails.
   Future<String> uploadThumbnail({
     required File thumbnailFile,
     required String senderId,
@@ -775,8 +754,6 @@ class ChatRepository {
     return result.data!;
   }
 
-  /// Uploads a group conversation photo.
-  /// Throws [Exception] if the upload fails.
   Future<String> uploadGroupPhoto({
     required File imageFile,
     required String adminUserId,
@@ -788,10 +765,6 @@ class ChatRepository {
     if (result.isFailure) throw Exception(result.error);
     return result.data!;
   }
-
-  // ──────────────────────────────────────────────
-  // Typing indicators (Supabase Realtime)
-  // ──────────────────────────────────────────────
 
   Stream<String?> watchTypingUser(String conversationId) {
     final typingController = StreamController<String?>.broadcast();
@@ -834,9 +807,35 @@ class ChatRepository {
         );
   }
 
-  // ──────────────────────────────────────────────
-  // Friend requests
-  // ──────────────────────────────────────────────
+  Future<({String docId, FriendRequestModel model})?> _getExistingRequestPair(
+    String userIdA,
+    String userIdB,
+  ) async {
+    final results = await Future.wait([
+      _friendRequests
+          .where('from_user_id', isEqualTo: userIdA)
+          .where('to_user_id', isEqualTo: userIdB)
+          .limit(1)
+          .get(),
+      _friendRequests
+          .where('from_user_id', isEqualTo: userIdB)
+          .where('to_user_id', isEqualTo: userIdA)
+          .limit(1)
+          .get(),
+    ]);
+
+    if (results[0].docs.isNotEmpty) {
+      final doc = results[0].docs.first;
+      return (docId: doc.id, model: FriendRequestModel.fromSnapshot(doc));
+    }
+
+    if (results[1].docs.isNotEmpty) {
+      final doc = results[1].docs.first;
+      return (docId: doc.id, model: FriendRequestModel.fromSnapshot(doc));
+    }
+
+    return null;
+  }
 
   Future<FriendRequestModel> sendFriendRequest({
     required String fromUserId,
@@ -845,39 +844,51 @@ class ChatRepository {
     required String toUserId,
     required String toUsername,
   }) async {
-    final results = await Future.wait([
-      _getAnyRequestBetween(fromUserId, toUserId),
-      _getAnyRequestBetween(toUserId, fromUserId),
-    ]);
-
-    final existingAB = results[0];
-    final existingBA = results[1];
-    
-
-    if (existingAB != null) {
-      if (existingAB.status == FriendRequestStatus.pending) {
-        throw DuplicateFriendRequestException(
-          'You have already sent a friend request to this user.',
-        );
-      }
-      if (existingAB.status == FriendRequestStatus.accepted) {
-        throw DuplicateFriendRequestException(
-          'You are already friends with this user.',
-        );
-      }
+    final alreadyFriends = await areFriends(fromUserId, toUserId);
+    if (alreadyFriends) {
+      throw const DuplicateFriendRequestException(
+        'You are already friends with this user.',
+      );
     }
-    if (existingBA != null) {
-      if (existingBA.status == FriendRequestStatus.pending) {
-        throw DuplicateFriendRequestException(
-          'This user has already sent you a friend request. '
-          'Accept it instead of sending a new one.',
-        );
+
+    final existing = await _getExistingRequestPair(fromUserId, toUserId);
+
+    if (existing != null) {
+      final req = existing.model;
+      final docId = existing.docId;
+
+      if (req.status == FriendRequestStatus.pending) {
+        if (req.fromUserId == fromUserId) {
+          throw const DuplicateFriendRequestException(
+            'You have already sent a friend request to this user.',
+          );
+        } else {
+          throw const DuplicateFriendRequestException(
+            'This user has already sent you a friend request. '
+            'Accept it instead of sending a new one.',
+          );
+        }
       }
-      if (existingBA.status == FriendRequestStatus.accepted) {
-        throw DuplicateFriendRequestException(
-          'You are already friends with this user.',
-        );
-      }
+
+      final fromProfile = await getUserProfile(fromUserId);
+      final fromFullName = fromProfile?['full_name'] as String? ?? '';
+
+      await _friendRequests.doc(docId).update({
+        'from_user_id': fromUserId,
+        'from_username': fromUsername,
+        'from_full_name': fromFullName,
+        'from_profile_photo': fromProfilePhoto,
+        'to_user_id': toUserId,
+        'to_username': toUsername,
+        'status': FriendRequestStatus.pending.name,
+        'sent_at': FieldValue.serverTimestamp(),
+        'responded_at': null,
+      });
+
+      final updatedSnap = await _friendRequests.doc(docId).get();
+      final updated = FriendRequestModel.fromSnapshot(updatedSnap);
+      await FriendRequestNotificationService.instance.notify(updated);
+      return updated;
     }
 
     final fromProfile = await getUserProfile(fromUserId);
@@ -902,19 +913,6 @@ class ChatRepository {
     return created;
   }
 
-  Future<FriendRequestModel?> _getAnyRequestBetween(
-    String fromId,
-    String toId,
-  ) async {
-    final snap = await _friendRequests
-        .where('from_user_id', isEqualTo: fromId)
-        .where('to_user_id', isEqualTo: toId)
-        .limit(1)
-        .get();
-    if (snap.docs.isEmpty) return null;
-    return FriendRequestModel.fromSnapshot(snap.docs.first);
-  }
-
   Stream<List<FriendRequestModel>> watchIncomingRequests(String userId) =>
       _friendRequests
           .where('to_user_id', isEqualTo: userId)
@@ -937,31 +935,22 @@ class ChatRepository {
     String userIdA,
     String userIdB,
   ) async {
-    final snap = await _friendRequests
-        .where('from_user_id', isEqualTo: userIdA)
-        .where('to_user_id', isEqualTo: userIdB)
-        .limit(1)
-        .get();
-    if (snap.docs.isEmpty) return null;
-    return FriendRequestModel.fromSnapshot(snap.docs.first);
+    final existing = await _getExistingRequestPair(userIdA, userIdB);
+    return existing?.model;
   }
 
   Future<bool> areFriends(String userIdA, String userIdB) async {
-    final results = await Future.wait([
-      _friendRequests
-          .where('from_user_id', isEqualTo: userIdA)
-          .where('to_user_id', isEqualTo: userIdB)
-          .where('status', isEqualTo: 'accepted')
-          .limit(1)
-          .get(),
-      _friendRequests
-          .where('from_user_id', isEqualTo: userIdB)
-          .where('to_user_id', isEqualTo: userIdA)
-          .where('status', isEqualTo: 'accepted')
-          .limit(1)
-          .get(),
-    ]);
-    return results[0].docs.isNotEmpty || results[1].docs.isNotEmpty;
+    final sortedIds = [userIdA, userIdB]..sort();
+    final uid1 = sortedIds[0];
+    final uid2 = sortedIds[1];
+
+    final snap = await _friends
+        .where('user_id_1', isEqualTo: uid1)
+        .where('user_id_2', isEqualTo: uid2)
+        .limit(1)
+        .get();
+
+    return snap.docs.isNotEmpty;
   }
 
   Future<void> respondToFriendRequest(
@@ -972,48 +961,86 @@ class ChatRepository {
     String? fromUsername,
     String? fromFullName,
   }) async {
-    await _friendRequests.doc(requestId).update({
-      'status': newStatus.name,
-      'responded_at': FieldValue.serverTimestamp(),
-    });
+    if (newStatus == FriendRequestStatus.accepted) {
+      final reqSnap = await _friendRequests.doc(requestId).get();
+      if (!reqSnap.exists) return;
+
+      final req = FriendRequestModel.fromSnapshot(reqSnap);
+      final sortedIds = [req.fromUserId, req.toUserId]..sort();
+      final uid1 = sortedIds[0];
+      final uid2 = sortedIds[1];
+
+      final existingFriend = await _friends
+          .where('user_id_1', isEqualTo: uid1)
+          .where('user_id_2', isEqualTo: uid2)
+          .limit(1)
+          .get();
+
+      final batch = _firestore.batch();
+
+      batch.delete(_friendRequests.doc(requestId));
+
+      if (existingFriend.docs.isEmpty) {
+        final friendRef = _friends.doc();
+        batch.set(friendRef, {
+          'user_id_1': uid1,
+          'user_id_2': uid2,
+          'user_ids': [uid1, uid2],
+          'created_at': FieldValue.serverTimestamp(),
+        });
+      }
+
+      await batch.commit();
+    } else {
+      await _friendRequests.doc(requestId).update({
+        'status': newStatus.name,
+        'responded_at': FieldValue.serverTimestamp(),
+      });
+    }
   }
 
-  Future<void> removeFriend(String requestId) => _friendRequests
-      .doc(requestId)
-      .update({'status': FriendRequestStatus.rejected.name});
+  Future<void> removeFriend(String friendDocId) =>
+      _friends.doc(friendDocId).delete();
+
+  Future<String?> getFriendDocId(String userIdA, String userIdB) async {
+    final sortedIds = [userIdA, userIdB]..sort();
+    final uid1 = sortedIds[0];
+    final uid2 = sortedIds[1];
+
+    final snap = await _friends
+        .where('user_id_1', isEqualTo: uid1)
+        .where('user_id_2', isEqualTo: uid2)
+        .limit(1)
+        .get();
+
+    if (snap.docs.isEmpty) return null;
+    return snap.docs.first.id;
+  }
 
   Future<void> cancelFriendRequest(String requestId) =>
       _friendRequests.doc(requestId).delete();
 
-  // ──────────────────────────────────────────────
-  // Friends list
-  // ──────────────────────────────────────────────
-
   Future<List<Map<String, dynamic>>> getFriendsList(String userId) async {
     final results = await Future.wait([
-      _friendRequests
-          .where('from_user_id', isEqualTo: userId)
-          .where('status', isEqualTo: 'accepted')
-          .get(),
-      _friendRequests
-          .where('to_user_id', isEqualTo: userId)
-          .where('status', isEqualTo: 'accepted')
-          .get(),
+      _friends.where('user_id_1', isEqualTo: userId).get(),
+      _friends.where('user_id_2', isEqualTo: userId).get(),
     ]);
 
-    final friendRequestIds = <String, String>{};
+    final friendEntries = <String, String>{};
+
     for (final doc in results[0].docs) {
-      final fid = doc.data()['to_user_id'] as String? ?? '';
-      if (fid.isNotEmpty) friendRequestIds[fid] = doc.id;
+      final otherId = doc.data()['user_id_2'] as String? ?? '';
+      if (otherId.isNotEmpty) friendEntries[otherId] = doc.id;
     }
+
     for (final doc in results[1].docs) {
-      final fid = doc.data()['from_user_id'] as String? ?? '';
-      if (fid.isNotEmpty) friendRequestIds[fid] = doc.id;
+      final otherId = doc.data()['user_id_1'] as String? ?? '';
+      if (otherId.isNotEmpty) friendEntries[otherId] = doc.id;
     }
 
-    if (friendRequestIds.isEmpty) return [];
+    if (friendEntries.isEmpty) return [];
 
-    final allFriendIds = friendRequestIds.keys.toList();
+    final allFriendIds = friendEntries.keys.toList();
     final out = <Map<String, dynamic>>[];
     final foundIds = <String>{};
 
@@ -1028,8 +1055,8 @@ class ChatRepository {
           foundIds.add(resolvedUid);
           out.add({
             ...flat,
-            'request_id':
-                friendRequestIds[d.id] ?? friendRequestIds[resolvedUid] ?? '',
+            'friend_doc_id':
+                friendEntries[d.id] ?? friendEntries[resolvedUid] ?? '',
           });
         }
       }
@@ -1060,8 +1087,8 @@ class ChatRepository {
             foundIds.add(d.id);
             out.add({
               ...flat,
-              'request_id':
-                  friendRequestIds[resolvedUid] ?? friendRequestIds[d.id] ?? '',
+              'friend_doc_id':
+                  friendEntries[resolvedUid] ?? friendEntries[d.id] ?? '',
             });
           }
         }
@@ -1070,10 +1097,6 @@ class ChatRepository {
 
     return out;
   }
-
-  // ──────────────────────────────────────────────
-  // Group members
-  // ──────────────────────────────────────────────
 
   Future<List<Map<String, dynamic>>> getGroupMembers(
     String conversationId,
@@ -1141,10 +1164,6 @@ class ChatRepository {
     return out;
   }
 
-  // ──────────────────────────────────────────────
-  // User search
-  // ──────────────────────────────────────────────
-
   Future<List<Map<String, dynamic>>> searchUsersByUsername(
     String query, {
     int limit = 20,
@@ -1157,10 +1176,6 @@ class ChatRepository {
         .get();
     return snap.docs.map((d) => _flattenProfile(d.id, d.data())).toList();
   }
-
-  // ──────────────────────────────────────────────
-  // Presence
-  // ──────────────────────────────────────────────
 
   Future<void> setOnline(String userId) => _presence.doc(userId).set({
     'is_online': true,
@@ -1250,10 +1265,6 @@ class ChatRepository {
         return total;
       });
 
-  // ──────────────────────────────────────────────
-  // JSON helpers
-  // ──────────────────────────────────────────────
-
   ConversationModel? _conversationFromJson(Map<String, dynamic> j) {
     try {
       return ConversationModel(
@@ -1295,10 +1306,6 @@ class ChatRepository {
   }
 }
 
-// ──────────────────────────────────────────────
-// Utilities
-// ──────────────────────────────────────────────
-
 class Rx {
   static Stream<R> combineLatest2<A, B, R>(
     Stream<A> streamA,
@@ -1339,10 +1346,6 @@ class Rx {
     return controller.stream;
   }
 }
-
-// ──────────────────────────────────────────────
-// Exceptions
-// ──────────────────────────────────────────────
 
 class MessageLimitException implements Exception {
   const MessageLimitException(this.message);

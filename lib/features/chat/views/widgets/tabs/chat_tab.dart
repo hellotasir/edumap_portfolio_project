@@ -52,13 +52,11 @@ class ChatsTab extends StatelessWidget {
                     orElse: () => '',
                   );
 
-          
             if (!isGroup && otherUserId.isNotEmpty) {
               return FutureBuilder<Map<String, dynamic>?>(
                 future: chatRepository.getUserProfile(otherUserId),
                 builder: (context, profileSnap) {
                   final profile = profileSnap.data;
-                 
                   final displayName =
                       (profile?['full_name'] as String?)?.isNotEmpty == true
                       ? profile!['full_name'] as String
@@ -86,25 +84,18 @@ class ChatsTab extends StatelessWidget {
               );
             }
 
-         
             final displayName = conv.groupName ?? 'Group';
             final unread = conv.unreadCounts[currentUserId] ?? 0;
 
-            return StreamBuilder<UserPresenceModel>(
-            
-              stream: const Stream.empty(),
-              builder: (context, _) {
-                return _ConversationTile(
-                  displayName: displayName,
-                  lastMessage: conv.lastMessage,
-                  lastMessageAt: conv.lastMessageAt,
-                  unread: unread,
-                  isOnline: false,
-                  isGroup: true,
-                  photoUrl: conv.groupPhoto,
-                  onTap: () => onOpenChat(conv),
-                );
-              },
+            return _ConversationTile(
+              displayName: displayName,
+              lastMessage: conv.lastMessage,
+              lastMessageAt: conv.lastMessageAt,
+              unread: unread,
+              isOnline: false,
+              isGroup: true,
+              photoUrl: conv.groupPhoto,
+              onTap: () => onOpenChat(conv),
             );
           },
         );

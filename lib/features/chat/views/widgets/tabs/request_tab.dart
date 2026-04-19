@@ -50,11 +50,31 @@ class RequestsTab extends StatelessWidget {
   }
 }
 
-class _RequestTile extends StatelessWidget {
+class _RequestTile extends StatefulWidget {
   const _RequestTile({required this.request, required this.chatRepository});
 
   final FriendRequestModel request;
   final ChatRepository chatRepository;
+
+  @override
+  State<_RequestTile> createState() => _RequestTileState();
+}
+
+class _RequestTileState extends State<_RequestTile> {
+  bool _responding = false;
+
+  Future<void> _respond(FriendRequestStatus status) async {
+    if (_responding || widget.request.id == null) return;
+    setState(() => _responding = true);
+    try {
+      await widget.chatRepository.respondToFriendRequest(
+        widget.request.id!,
+        status,
+      );
+    } finally {
+      if (mounted) setState(() => _responding = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -66,9 +86,9 @@ class _RequestTile extends StatelessWidget {
       child: Row(
         children: [
           Avatar(
-            displayName: request.fromUsername,
-            photoUrl: request.fromProfilePhoto.isNotEmpty
-                ? request.fromProfilePhoto
+            displayName: widget.request.fromUsername,
+            photoUrl: widget.request.fromProfilePhoto.isNotEmpty
+                ? widget.request.fromProfilePhoto
                 : null,
           ),
           const SizedBox(width: 14),
@@ -77,25 +97,24 @@ class _RequestTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  // FIX 3: show full name if present, otherwise username
-                  request.fromFullName.isNotEmpty
-                      ? request.fromFullName
-                      : request.fromUsername,
+                  widget.request.fromFullName.isNotEmpty
+                      ? widget.request.fromFullName
+                      : widget.request.fromUsername,
                   style: textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     letterSpacing: -0.1,
                   ),
                 ),
-                if (request.fromFullName.isNotEmpty)
+                if (widget.request.fromFullName.isNotEmpty)
                   Text(
-                    '@${request.fromUsername}',
+                    '@${widget.request.fromUsername}',
                     style: textTheme.bodySmall?.copyWith(
                       color: colorScheme.onSurface.withValues(alpha: 0.4),
                     ),
                   ),
                 const SizedBox(height: 2),
                 Text(
-                  timeago.format(request.sentAt),
+                  timeago.format(widget.request.sentAt),
                   style: textTheme.bodySmall?.copyWith(
                     color: colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
@@ -104,46 +123,43 @@ class _RequestTile extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 10),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              FilledButton(
-                onPressed: () async {
-                  await chatRepository.respondToFriendRequest(
-                    request.id!,
-                    FriendRequestStatus.accepted,
-                  );
-                },
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+          if (_responding)
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+            )
+          else
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FilledButton(
+                  onPressed: () => _respond(FriendRequestStatus.accepted),
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  child: const Text('Accept'),
                 ),
-                child: const Text('Accept'),
-              ),
-              const SizedBox(width: 8),
-              OutlinedButton(
-                onPressed: () async {
-                  await chatRepository.respondToFriendRequest(
-                    request.id!,
-                    FriendRequestStatus.rejected,
-                  );
-                },
-                style: OutlinedButton.styleFrom(
-                  minimumSize: const Size(0, 36),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
+                const SizedBox(width: 8),
+                OutlinedButton(
+                  onPressed: () => _respond(FriendRequestStatus.rejected),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  child: const Text('Decline'),
                 ),
-                child: const Text('Decline'),
-              ),
-            ],
-          ),
+              ],
+            ),
         ],
       ),
     );

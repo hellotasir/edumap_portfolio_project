@@ -46,7 +46,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _animCtrl, curve: Curves.easeOutCubic));
 
-    // Auto-refresh the stream every time this screen is pushed/revisited
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.invalidate(profileStreamProvider(widget.viewUserId));
     });
@@ -77,7 +76,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     try {
       await _notifier.changeAvatar(context);
       _showSnack('Profile photo updated');
-      // Invalidate stream so UI refreshes immediately after upload
       ref.invalidate(profileStreamProvider(widget.viewUserId));
     } catch (e) {
       _showSnack('Upload failed: $e', error: true);
@@ -88,7 +86,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     try {
       await _notifier.changeCover(context);
       _showSnack('Cover photo updated');
-      // Invalidate stream so UI refreshes immediately after upload
       ref.invalidate(profileStreamProvider(widget.viewUserId));
     } catch (e) {
       _showSnack('Upload failed: $e', error: true);
@@ -132,7 +129,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Watch the stream provider — auto-rebuilds on every new emission
     final profileAsync = ref.watch(profileStreamProvider(widget.viewUserId));
 
     return MaterialWidget(
@@ -140,13 +136,11 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         body: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),
           child: profileAsync.when(
-            // ── Loading ──────────────────────────────────────────────────────
             loading: () => const Center(
               key: ValueKey('loading'),
               child: LoadingIndicator(),
             ),
 
-            // ── Error ────────────────────────────────────────────────────────
             error: (error, stackTrace) => ErrorView(
               key: const ValueKey('error'),
               message: error.toString(),
@@ -156,9 +150,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               },
             ),
 
-            // ── Data ─────────────────────────────────────────────────────────
             data: (profileState) {
-              // Still loading inside the stream (initial fetch in progress)
               if (profileState.loading) {
                 return const Center(
                   key: ValueKey('loading'),
@@ -166,7 +158,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 );
               }
 
-              // Error emitted through the stream
               if (profileState.errorMessage != null) {
                 return ErrorView(
                   key: const ValueKey('error'),
@@ -178,7 +169,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 );
               }
 
-              // Success — trigger animation once per visit
               _triggerAnimation();
 
               return FadeTransition(

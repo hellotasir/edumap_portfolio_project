@@ -11,7 +11,7 @@ class StatCard extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     return Container(
-      width: MediaQuery.of(context).size.width * 0.3,
+      width: MediaQuery.of(context).size.width * 0.26,
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
         color: cs.surfaceContainerHighest,
