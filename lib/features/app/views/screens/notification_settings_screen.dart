@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/services/local/notification_listener_service.dart';
+import 'package:flutter_education_app/core/services/notification/firestore_listener_service.dart';
 import 'package:flutter_education_app/core/widgets/material_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

@@ -30,9 +30,6 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
 
   void _showError(String message) {
     if (!mounted) return;
@@ -67,9 +64,6 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
     );
   }
 
-  // ---------------------------------------------------------------------------
-  // Actions — delegate to notifier
-  // ---------------------------------------------------------------------------
 
   Future<void> _startEnrollment() async {
     try {
@@ -121,10 +115,6 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
-
   @override
   Widget build(BuildContext context) {
     final state = ref.watch(mfaNotifierProvider);
@@ -159,9 +149,6 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
     };
   }
 
-  // ---------------------------------------------------------------------------
-  // Intro
-  // ---------------------------------------------------------------------------
 
   Widget _buildIntroView(MfaState state) {
     final theme = Theme.of(context);
@@ -199,7 +186,7 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
             "2FA, you'll need to enter a 6-digit code from your authenticator "
             "app when signing in.",
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.65),
+              color: colorScheme.onSurface.withValues(alpha: 0.65),
             ),
           ),
           const SizedBox(height: 32),
@@ -267,7 +254,7 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
             'Open your authenticator app and scan the QR code below, or enter '
             'the secret key manually.',
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.65),
+              color: colorScheme.onSurface.withValues(alpha: 0.65),
             ),
           ),
           const SizedBox(height: 28),
@@ -276,7 +263,9 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
               width: 200,
               height: 200,
               decoration: BoxDecoration(
-                border: Border.all(color: colorScheme.outline.withOpacity(0.3)),
+                border: Border.all(
+                  color: colorScheme.outline.withValues(alpha: 0.3),
+                ),
                 borderRadius: BorderRadius.circular(12),
                 color: colorScheme.surfaceContainerHighest,
               ),
@@ -292,7 +281,7 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
             Text(
               'Manual entry key',
               style: theme.textTheme.labelMedium?.copyWith(
-                color: colorScheme.onSurface.withOpacity(0.6),
+                color: colorScheme.onSurface.withValues(alpha: 0.6),
               ),
             ),
             const SizedBox(height: 6),
@@ -339,7 +328,7 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
             'After scanning, enter the 6-digit code shown in your authenticator '
             'app to confirm setup.',
             style: theme.textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.6),
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 16),
@@ -420,7 +409,9 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
             "Your account is protected with two-factor authentication. "
             "You'll be asked for a code each time you sign in.",
             style: theme.textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface.withOpacity(0.65),
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurface.withValues(alpha: 0.65),
             ),
             textAlign: TextAlign.center,
           ),
@@ -495,7 +486,7 @@ class _BenefitTile extends StatelessWidget {
               Text(
                 subtitle,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurface.withOpacity(0.6),
+                  color: colorScheme.onSurface.withValues(alpha: 0.6),
                 ),
               ),
             ],

@@ -61,9 +61,6 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Helpers
-  // ---------------------------------------------------------------------------
 
   void _showError(String message) {
     if (!mounted) return;
@@ -98,9 +95,6 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
     ),
   );
 
-  // ---------------------------------------------------------------------------
-  // Action
-  // ---------------------------------------------------------------------------
 
   Future<void> _submitDeletionRequest() async {
     if (!_formKey.currentState!.validate()) return;
@@ -133,9 +127,6 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -192,7 +183,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
             'Enter your current password to verify your identity before '
             'deleting your account.',
             style: textTheme.bodySmall?.copyWith(
-              color: colorScheme.onSurface.withOpacity(0.6),
+              color: colorScheme.onSurface.withValues(alpha: 0.6),
             ),
           ),
           const SizedBox(height: 16),
@@ -305,7 +296,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
           'Your account and all associated data have been permanently deleted. '
           'You have been signed out of all devices.',
           style: textTheme.bodyMedium?.copyWith(
-            color: theme.colorScheme.onSurface.withOpacity(0.65),
+            color: theme.colorScheme.onSurface.withValues(alpha: 0.65),
           ),
           textAlign: TextAlign.center,
         ),
@@ -324,9 +315,6 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
   }
 }
 
-// ---------------------------------------------------------------------------
-// _WarningBanner — internal widget
-// ---------------------------------------------------------------------------
 
 class _WarningBanner extends StatelessWidget {
   const _WarningBanner({required this.theme});

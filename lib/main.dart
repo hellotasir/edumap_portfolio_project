@@ -2,7 +2,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_education_app/core/services/local/notification_service.dart';
+import 'package:flutter_education_app/core/services/notification/notification_service.dart';
 import 'package:flutter_education_app/core/widgets/material_widget.dart';
 import 'package:flutter_education_app/features/app/views/screens/splash_screen.dart';
 import 'package:flutter_education_app/firebase_options.dart';
@@ -12,9 +12,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// Must be top-level (not inside a class or function).
-// Called by the FCM plugin when a push arrives and the app is fully killed.
-// Firebase is already initialized by the FCM plugin before this runs.
+
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await firebaseMessagingBackgroundHandler(message);
@@ -22,37 +20,23 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   await dotenv.load(fileName: '.env.development');
-
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
-
   sqfliteFfiInit();
-
   Stripe.publishableKey = dotenv.env['STRIPE_PUBLISHABLE_KEY']!;
   await Stripe.instance.applySettings();
-
-  // Register FCM background handler BEFORE runApp
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // Request notification permission (iOS prompts user; Android 13+ also prompts)
   await FirebaseMessaging.instance.requestPermission(
     alert: true,
     badge: true,
     sound: true,
   );
-
-  // Initialize local notifications plugin
   await NotificationService.instance.initialize();
-
-  // Request Android notification permission via permission_handler
   await Permission.notification.request();
-
   runApp(const ProviderScope(child: MyApp()));
 }
 

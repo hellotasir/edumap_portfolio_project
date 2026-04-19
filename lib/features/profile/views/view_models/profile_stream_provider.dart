@@ -1,7 +1,7 @@
 // lib/features/profile/views/view_models/profile_stream_provider.dart
-
 import 'dart:async';
 import 'package:flutter_education_app/features/profile/views/view_models/profile_provider.dart';
+import 'package:flutter_education_app/features/profile/views/view_models/profile_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final profileStreamProvider = StreamProvider.family<ProfileState, String?>((

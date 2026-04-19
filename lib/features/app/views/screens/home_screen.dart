@@ -7,6 +7,7 @@ import 'package:flutter_education_app/core/widgets/loading_widget.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_profile_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_profile_avatar.dart';
+import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
 import 'package:flutter_education_app/features/location/views/widgets/location_widget.dart';
 import 'package:flutter_education_app/features/profile/models/profile_model.dart';
 import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
@@ -211,7 +212,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           ),
 
        
-          body: AnimatedSwitcher(
+          body: MfaWidget(
+            authRepository: AuthRepository(),
+            child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 280),
             switchInCurve: Curves.easeOut,
             switchOutCurve: Curves.easeIn,
@@ -221,6 +224,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               hasError: hasError,
               profile: profile,
               colorScheme: colorScheme,
+            ),
             ),
           ),
 

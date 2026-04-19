@@ -14,9 +14,7 @@ import 'package:flutter_stripe/flutter_stripe.dart';
 import 'payment_state.dart';
 
 sealed class PaymentResult {}
-
 class PaymentSucceeded extends PaymentResult {}
-
 class PaymentCancelled extends PaymentResult {}
 
 class PaymentFailed extends PaymentResult {
@@ -66,7 +64,7 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
           await _handleSSLCommerzPayment(plan: plan, profile: profile);
           break;
         default:
-          throw Exception('Unknown payment method: ${state.selectedMethod}');
+          throw Exception('Unknown payment method');
       }
     } on StripeException catch (e) {
       final msg =
@@ -121,7 +119,6 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     );
 
     await Stripe.instance.presentPaymentSheet();
-
     await _paymentRepo.activateSubscription(plan: plan, gateway: 'stripe');
 
     state = state.copyWith(status: PaymentStatus.success);
@@ -132,6 +129,7 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     required SubscriptionPlan plan,
     required ProfileModel profile,
   }) async {
+    
     final storeID = dotenv.env['SSL_COMMERZ_STORE_ID']!;
     final storePassword = dotenv.env['SSL_COMMERZ_STORE_PASSWORD']!;
     final tranId = 'TXN${DateTime.now().millisecondsSinceEpoch}';

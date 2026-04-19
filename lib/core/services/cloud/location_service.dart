@@ -3,77 +3,88 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_education_app/features/location/repositories/local_repository.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:flutter_education_app/features/location/models/local_model.dart';
 import 'package:http/http.dart' as http;
 
+
 class LocationPermissionException implements Exception {
-  const LocationPermissionException(this.message);
   final String message;
+  const LocationPermissionException(this.message);
 }
 
 class LocationServiceDisabledException implements Exception {
-  const LocationServiceDisabledException(this.message);
   final String message;
+  const LocationServiceDisabledException(this.message);
 }
 
 class GeocodingException implements Exception {
-  const GeocodingException(this.message);
   final String message;
+  const GeocodingException(this.message);
 }
 
-class _NominatimClient {
-  static const _baseUrl = 'https://nominatim.openstreetmap.org';
 
-  static const _headers = {
-    'User-Agent': 'FlutterEducationApp/1.0 (your@email.com)',
+class _NominatimClient {
+  static final String _baseUrl = dotenv.env['OPEN_STREET_API_URL']!;
+
+  static const Map<String, String> _headers = {
+    'User-Agent': 'FlutterEducationApp/1.0 (demo@email.com)',
     'Accept-Language': 'en',
   };
 
   Future<Map<String, dynamic>> reverseGeocode(double lat, double lng) async {
-    final uri = Uri.parse('$_baseUrl/reverse?format=jsonv2&lat=$lat&lon=$lng');
-    final response = await http.get(uri, headers: _headers);
+    final url = Uri.parse('$_baseUrl/reverse?format=jsonv2&lat=$lat&lon=$lng');
+    final response = await http.get(url, headers: _headers);
+
     if (response.statusCode != 200) {
       throw GeocodingException(
-        'Nominatim reverse geocode failed: ${response.statusCode}',
+        'Reverse geocode failed: ${response.statusCode}',
       );
     }
+
     return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
-  Future<List<Map<String, dynamic>>> forwardGeocode(String query) async {
-    final uri = Uri.parse(
-      '$_baseUrl/search?format=jsonv2&q=${Uri.encodeComponent(query)}&limit=1',
+  Future<List<Map<String, dynamic>>> forwardGeocode(String address) async {
+    final encodedAddress = Uri.encodeComponent(address);
+    final url = Uri.parse(
+      '$_baseUrl/search?format=jsonv2&q=$encodedAddress&limit=1',
     );
-    final response = await http.get(uri, headers: _headers);
+    final response = await http.get(url, headers: _headers);
+
     if (response.statusCode != 200) {
       throw GeocodingException(
-        'Nominatim forward geocode failed: ${response.statusCode}',
+        'Forward geocode failed: ${response.statusCode}',
       );
     }
-    final list = jsonDecode(response.body) as List<dynamic>;
-    return list.cast<Map<String, dynamic>>();
+
+    final results = jsonDecode(response.body) as List<dynamic>;
+    return results.cast<Map<String, dynamic>>();
   }
 }
 
+
 class LocationService {
+  final LocationRepository _repo;
+  final _NominatimClient _nominatim;
+
   LocationService({LocationRepository? repository})
     : _repo = repository ?? LocationRepository(),
       _nominatim = _NominatimClient();
 
-  final LocationRepository _repo;
-  final _NominatimClient _nominatim;
 
-  Future<Position> _acquirePosition() async {
-    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
-    if (!serviceEnabled) {
+  Future<Position> _getDevicePosition() async {
+    final isServiceOn = await Geolocator.isLocationServiceEnabled();
+    if (!isServiceOn) {
       throw const LocationServiceDisabledException(
         'Location services are disabled.',
       );
     }
 
     var permission = await Geolocator.checkPermission();
+
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
       if (permission == LocationPermission.denied) {
@@ -82,6 +93,7 @@ class LocationService {
         );
       }
     }
+
     if (permission == LocationPermission.deniedForever) {
       throw const LocationPermissionException(
         'Location permission is permanently denied.',
@@ -93,17 +105,15 @@ class LocationService {
     );
   }
 
-  Future<AddressComponents> _reverseGeocode(double lat, double lng) async {
+  Future<AddressComponents> _buildAddressFrom(double lat, double lng) async {
     try {
       final json = await _nominatim.reverseGeocode(lat, lng);
-
-      // Nominatim wraps address parts inside an "address" sub-object.
       final addr = (json['address'] as Map<String, dynamic>?) ?? {};
 
       final street = [
         addr['house_number'] as String?,
         addr['road'] as String?,
-      ].where((s) => s != null && s.isNotEmpty).join(' ');
+      ].where((part) => part != null && part.isNotEmpty).join(' ');
 
       final city =
           (addr['city'] as String?) ??
@@ -111,18 +121,13 @@ class LocationService {
           (addr['village'] as String?) ??
           '';
 
-      final state = (addr['state'] as String?) ?? '';
-      final country = (addr['country'] as String?) ?? '';
-      final postalCode = (addr['postcode'] as String?) ?? '';
-      final formatted = (json['display_name'] as String?) ?? '$lat, $lng';
-
       return AddressComponents(
         street: street,
         city: city,
-        state: state,
-        country: country,
-        postalCode: postalCode,
-        formattedAddress: formatted,
+        state: (addr['state'] as String?) ?? '',
+        country: (addr['country'] as String?) ?? '',
+        postalCode: (addr['postcode'] as String?) ?? '',
+        formattedAddress: (json['display_name'] as String?) ?? '$lat, $lng',
       );
     } on GeocodingException {
       rethrow;
@@ -131,30 +136,36 @@ class LocationService {
     }
   }
 
-  Future<({double lat, double lng})> _forwardGeocodeCoords(
+  Future<({double lat, double lng})> _getCoordsFromAddress(
     String rawAddress,
   ) async {
     final results = await _nominatim.forwardGeocode(rawAddress);
-    if (results.isEmpty) throw const GeocodingException('Address not found.');
+
+    if (results.isEmpty) {
+      throw const GeocodingException('Address not found.');
+    }
+
+    final first = results.first;
     return (
-      lat: double.parse(results.first['lat'] as String),
-      lng: double.parse(results.first['lon'] as String),
+      lat: double.parse(first['lat'] as String),
+      lng: double.parse(first['lon'] as String),
     );
   }
+
 
   Future<LocationModel> saveCurrentLocation({
     required String userId,
     required String role,
     bool isVisible = true,
   }) async {
-    final position = await _acquirePosition();
-    final address = await _reverseGeocode(
+    final position = await _getDevicePosition();
+    final address = await _buildAddressFrom(
       position.latitude,
       position.longitude,
     );
     final now = DateTime.now();
 
-    final model = LocationModel(
+    final location = LocationModel(
       userId: userId,
       role: role,
       type: LocationType.currentLocation,
@@ -170,8 +181,8 @@ class LocationService {
       isVisible: isVisible,
     );
 
-    await _repo.upsertCurrentLocation(model);
-    return model;
+    await _repo.upsertCurrentLocation(location);
+    return location;
   }
 
   Future<LocationModel> saveCustomLocation({
@@ -182,11 +193,11 @@ class LocationService {
     bool isDefault = false,
     bool isVisible = true,
   }) async {
-    final coords = await _forwardGeocodeCoords(rawAddress);
-    final address = await _reverseGeocode(coords.lat, coords.lng);
+    final coords = await _getCoordsFromAddress(rawAddress);
+    final address = await _buildAddressFrom(coords.lat, coords.lng);
     final now = DateTime.now();
 
-    final model = LocationModel(
+    final location = LocationModel(
       userId: userId,
       role: role,
       type: LocationType.customAddress,
@@ -199,8 +210,8 @@ class LocationService {
       isVisible: isVisible,
     );
 
-    final id = await _repo.addCustomLocation(model);
-    return model.copyWith(id: id);
+    final docId = await _repo.addCustomLocation(location);
+    return location.copyWith(id: docId);
   }
 
   Future<void> deleteCustomLocation(String docId) =>
@@ -211,6 +222,7 @@ class LocationService {
     required String role,
     required String locationId,
   }) => _repo.setDefaultLocation(userId, role, locationId);
+
 
   Stream<LocationModel?> watchCurrentLocation(String userId, String role) =>
       _repo.watchCurrentLocation(userId, role);
@@ -224,32 +236,36 @@ class LocationService {
   Future<LocationModel?> getCurrentLocation(String userId, String role) =>
       _repo.getCurrentLocation(userId, role);
 
+
   Future<double?> distanceBetween({
     required String userIdA,
     required String roleA,
     required String userIdB,
     required String roleB,
   }) async {
-    final locA = await _repo.getCurrentLocation(userIdA, roleA);
-    final locB = await _repo.getDefaultLocation(userIdB, roleB);
+    final locationA = await _repo.getCurrentLocation(userIdA, roleA);
+    final locationB = await _repo.getDefaultLocation(userIdB, roleB);
 
-    if (locA == null || locB == null) return null;
+    if (locationA == null || locationB == null) return null;
 
-    return _haversineKm(locA.coordinates, locB.coordinates);
+    return _haversineDistanceKm(locationA.coordinates, locationB.coordinates);
   }
 
-  double _haversineKm(LatLng a, LatLng b) {
-    const r = 6371.0;
-    final dLat = _rad(b.latitude - a.latitude);
-    final dLon = _rad(b.longitude - a.longitude);
-    final h =
-        math.sin(dLat / 2) * math.sin(dLat / 2) +
-        math.cos(_rad(a.latitude)) *
-            math.cos(_rad(b.latitude)) *
-            math.sin(dLon / 2) *
-            math.sin(dLon / 2);
-    return 2 * r * math.asin(math.sqrt(h));
+  double _haversineDistanceKm(LatLng pointA, LatLng pointB) {
+    const earthRadiusKm = 6371.0;
+
+    final deltaLat = _toRadians(pointB.latitude - pointA.latitude);
+    final deltaLng = _toRadians(pointB.longitude - pointA.longitude);
+
+    final a =
+        math.sin(deltaLat / 2) * math.sin(deltaLat / 2) +
+        math.cos(_toRadians(pointA.latitude)) *
+            math.cos(_toRadians(pointB.latitude)) *
+            math.sin(deltaLng / 2) *
+            math.sin(deltaLng / 2);
+
+    return 2 * earthRadiusKm * math.asin(math.sqrt(a));
   }
 
-  double _rad(double deg) => deg * math.pi / 180;
+  double _toRadians(double degrees) => degrees * math.pi / 180;
 }

@@ -1,6 +1,7 @@
 // lib/features/profile/views/screens/profile_screen.dart
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/profile/views/view_models/profile_notifier.dart';
 import 'package:flutter_education_app/features/profile/views/view_models/profile_provider.dart';
 import 'package:flutter_education_app/features/profile/views/view_models/profile_stream_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

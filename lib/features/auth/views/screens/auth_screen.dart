@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/routers/app_navigator.dart';
 import 'package:flutter_education_app/core/services/local/fcm_token_service.dart';
-import 'package:flutter_education_app/core/services/local/notification_listener_service.dart';
+import 'package:flutter_education_app/core/services/notification/firestore_listener_service.dart';
 import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_education_app/features/app/views/screens/home_screen.dart';

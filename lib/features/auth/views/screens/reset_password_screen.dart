@@ -40,9 +40,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Action
-  // ---------------------------------------------------------------------------
 
   Future<void> _changePassword() async {
     if (!_formKey.currentState!.validate()) return;
@@ -66,10 +63,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {

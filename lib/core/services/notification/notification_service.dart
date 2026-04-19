@@ -33,7 +33,7 @@ class NotificationService {
         android: androidSettings,
         iOS: iosSettings,
       ),
-      onDidReceiveNotificationResponse: _onNotificationTapped,
+
       onDidReceiveBackgroundNotificationResponse: _onBackgroundNotificationTap,
     );
 
@@ -68,7 +68,6 @@ class NotificationService {
 
   Stream<String> get onTokenRefresh =>
       FirebaseMessaging.instance.onTokenRefresh;
-
 
   Future<void> _createAndroidChannel() async {
     if (!Platform.isAndroid) return;
@@ -139,9 +138,7 @@ class NotificationService {
     );
 
     await incrementBadge();
-    debugPrint('[NotificationService] Showed notification for docId=$docId');
   }
-
 
   Future<void> incrementBadge() async {
     final prefs = await SharedPreferences.getInstance();
@@ -174,19 +171,14 @@ class NotificationService {
     return prefs.getInt(_badgeCountKey) ?? 0;
   }
 
-
   Future<void> cancelNotification(String docId) async {
     final id = docId.hashCode.abs() % 100000;
     await _plugin.cancel(id: id);
   }
+
   Future<void> cancelAllNotifications() async {
     await _plugin.cancelAll();
     await clearBadge();
-  }
-
-  void _onNotificationTapped(NotificationResponse response) {
-    debugPrint('[NotificationService] Tapped, docId=${response.payload}');
-    // TODO: navigate to friend requests screen using your AppNavigator
   }
 }
 

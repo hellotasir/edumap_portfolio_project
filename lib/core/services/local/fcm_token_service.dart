@@ -1,47 +1,39 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'notification_service.dart';
+import '../notification/notification_service.dart';
 
 class FcmTokenService {
   FcmTokenService._();
   static final FcmTokenService instance = FcmTokenService._();
 
+  static const _table = 'user_fcm_tokens';
+
+  SupabaseClient get _client => Supabase.instance.client;
+
   Future<void> saveToken(String userId) async {
-    try {
-      final token = await NotificationService.instance.getFcmToken();
-      if (token == null) {
-        debugPrint('[FcmTokenService] No FCM token available yet.');
-        return;
-      }
-      await _upsert(userId, token);
+    if (userId.trim().isEmpty) return;
 
-      NotificationService.instance.onTokenRefresh.listen((newToken) async {
-        await _upsert(userId, newToken);
-      });
-    } catch (e) {
-      debugPrint('[FcmTokenService] Error saving token: $e');
-    }
-  }
+    final token = await NotificationService.instance.getFcmToken();
+    if (token == null) return;
 
-  Future<void> _upsert(String userId, String token) async {
-    final client = Supabase.instance.client;
-    final response = await client.from('user_fcm_tokens').upsert({
-      'user_id': userId,
-      'fcm_token': token,
-      'updated_at': DateTime.now().toIso8601String(),
+    await _upsertToken(userId, token);
+
+    NotificationService.instance.onTokenRefresh.listen((refreshedToken) async {
+      if (refreshedToken.trim().isEmpty) return;
+      await _upsertToken(userId, refreshedToken);
     });
-    debugPrint('[FcmTokenService] Token saved for user $userId → $response');
   }
 
   Future<void> removeToken(String userId) async {
-    try {
-      await Supabase.instance.client
-          .from('user_fcm_tokens')
-          .delete()
-          .eq('user_id', userId);
-      debugPrint('[FcmTokenService] Token removed for user $userId');
-    } catch (e) {
-      debugPrint('[FcmTokenService] Error removing token: $e');
-    }
+    if (userId.trim().isEmpty) return;
+
+    await _client.from(_table).delete().eq('user_id', userId);
+  }
+
+  Future<void> _upsertToken(String userId, String token) async {
+    await _client.from(_table).upsert({
+      'user_id': userId,
+      'fcm_token': token,
+      'updated_at': DateTime.now().toUtc().toIso8601String(),
+    }, onConflict: 'user_id');
   }
 }

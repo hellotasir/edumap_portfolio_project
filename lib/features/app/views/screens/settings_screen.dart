@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/services/local/fcm_token_service.dart';
-import 'package:flutter_education_app/core/services/local/notification_listener_service.dart';
+import 'package:flutter_education_app/core/services/notification/firestore_listener_service.dart';
 import 'package:flutter_education_app/features/app/views/screens/notification_settings_screen.dart';
 import 'package:flutter_education_app/features/subscription/views/screens/subscription_screen.dart';
 import 'package:flutter_education_app/features/profile/models/profile_model.dart';

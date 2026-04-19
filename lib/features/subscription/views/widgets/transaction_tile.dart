@@ -43,7 +43,7 @@ class TransactionTile extends StatelessWidget {
       ),
       confirmDismiss: (_) async {
         onDelete();
-        return false; // let onDelete handle it with confirmation
+        return false;
       },
       child: InkWell(
         onTap: onTap,

@@ -114,9 +114,6 @@ class AccountDetailsScreen extends ConsumerWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Internal list-tile widgets (scoped to this screen)
-// ---------------------------------------------------------------------------
 
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel({required this.label});

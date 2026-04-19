@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
 import 'package:flutter_education_app/features/location/models/local_model.dart';
 import 'package:flutter_education_app/core/services/cloud/location_service.dart';
@@ -134,7 +135,8 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
           ),
         ],
       ),
-      body: _loading
+      body: NetworkWidget(
+        child: _loading
           ? const Center(child: CircularProgressIndicator())
           : _friends.isEmpty
           ? _EmptyFriends()
@@ -149,7 +151,8 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
                   onTap: () => _openDistanceMap(friend),
                 );
               },
-            ),
+              ),
+      ),
     );
   }
 }

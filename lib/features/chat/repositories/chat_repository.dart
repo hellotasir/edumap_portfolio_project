@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/services/notification/friend_request_notification_service.dart'
+    show FriendRequestNotificationService;
 import 'package:flutter_education_app/features/chat/models/conversation_model.dart';
 import 'package:flutter_education_app/features/chat/models/friend_request_model.dart';
 import 'package:flutter_education_app/features/chat/models/user_preference_model.dart';
@@ -850,6 +852,7 @@ class ChatRepository {
 
     final existingAB = results[0];
     final existingBA = results[1];
+    
 
     if (existingAB != null) {
       if (existingAB.status == FriendRequestStatus.pending) {
@@ -892,7 +895,11 @@ class ChatRepository {
     );
 
     final ref = await _friendRequests.add(model.toMap());
-    return FriendRequestModel.fromSnapshot(await ref.get());
+    final created = FriendRequestModel.fromSnapshot(await ref.get());
+
+    await FriendRequestNotificationService.instance.notify(created);
+
+    return created;
   }
 
   Future<FriendRequestModel?> _getAnyRequestBetween(

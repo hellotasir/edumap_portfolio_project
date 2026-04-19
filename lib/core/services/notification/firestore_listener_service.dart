@@ -16,8 +16,6 @@ class FirestoreListenerService {
   void startListening(String myUserId) {
     if (_subscription != null) return;
 
-    debugPrint('[Firestore] Listening for friend requests → user: $myUserId');
-
     _subscription = FirebaseFirestore.instance
         .collection('friend_requests')
         .where('to_user_id', isEqualTo: myUserId)
@@ -32,7 +30,6 @@ class FirestoreListenerService {
   void stopListening() {
     _subscription?.cancel();
     _subscription = null;
-    debugPrint('[Firestore] Stopped listening.');
   }
 
   Future<void> _onSnapshot(QuerySnapshot snapshot) async {
@@ -62,7 +59,6 @@ class FirestoreListenerService {
 
       seenIds.add(req.id ?? '');
       changed = true;
-      debugPrint('[Firestore] Notified: ${req.fromUsername} → you');
     }
 
     if (changed) {

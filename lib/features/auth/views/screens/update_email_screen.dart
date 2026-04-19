@@ -30,7 +30,6 @@ class _UpdateEmailScreenState extends ConsumerState<UpdateEmailScreen> {
   bool _isLoading = false;
   bool _emailUpdated = false;
 
-  /// Read once; the current email won't change while this screen is open.
   late final String _currentEmail;
 
   @override
@@ -45,9 +44,6 @@ class _UpdateEmailScreenState extends ConsumerState<UpdateEmailScreen> {
     super.dispose();
   }
 
-  // ---------------------------------------------------------------------------
-  // Action
-  // ---------------------------------------------------------------------------
 
   Future<void> _updateEmail() async {
     if (!_formKey.currentState!.validate()) return;
@@ -69,9 +65,6 @@ class _UpdateEmailScreenState extends ConsumerState<UpdateEmailScreen> {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Build
-  // ---------------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
