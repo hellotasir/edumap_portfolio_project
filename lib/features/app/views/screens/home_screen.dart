@@ -3,11 +3,14 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/core/services/cloud/profile_location_service.dart';
 import 'package:flutter_education_app/core/widgets/loading_widget.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_profile_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_profile_avatar.dart';
 import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
+import 'package:flutter_education_app/features/location/repositories/profile_location_repository.dart';
+import 'package:flutter_education_app/features/location/views/view_models/profile_location_adapter.dart';
 import 'package:flutter_education_app/features/location/views/widgets/location_widget.dart';
 import 'package:flutter_education_app/features/profile/models/profile_model.dart';
 import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
@@ -17,7 +20,6 @@ import 'package:flutter_education_app/features/profile/repositories/profile_repo
 import 'package:flutter_education_app/core/services/cloud/location_service.dart';
 import 'package:flutter_education_app/features/chat/views/widgets/inbox_widget.dart';
 import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
-
 
 enum _HomeTab {
   inbox(
@@ -42,7 +44,6 @@ enum _HomeTab {
   final IconData selectedIcon;
 }
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -51,24 +52,22 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
-
   _HomeTab _currentTab = _HomeTab.inbox;
-
 
   final _profileRepository = ProfileRepository();
   final _authRepository = AuthRepository();
   final _chatRepository = ChatRepository();
   late final _locationService = LocationService();
-
+  late final _profileLocationRepository = ProfileLocationRepository();
+  late final _profileLocationService = ProfileLocationService(
+    locationService: _locationService,
+    profileLocationRepository: _profileLocationRepository,
+  );
 
   Stream<ProfileModel?>? _profileStream;
   StreamSubscription<ProfileModel?>? _profileSub;
-
-
   ProfileModel? _cachedProfile;
-
   Object? _profileError;
-
 
   @override
   void initState() {
@@ -87,7 +86,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void _initProfileStream() {
     final userId = _authRepository.currentUser?.id;
     if (userId == null || userId.isEmpty) {
-      // Not authenticated – surface an error rather than silently failing.
       setState(() => _profileError = 'User is not authenticated.');
       return;
     }
@@ -133,12 +131,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       ),
       _HomeTab.location => LocationWidget(
         userId: profile.userId,
-        locationService: _locationService,
         role: profile.currentMode,
+        profileLocationService: _profileLocationService,
+        locationService: ProfileLocationAdapter(
+          profileLocationService: _profileLocationService,
+          locationService: _locationService,
+        ),
       ),
     };
   }
-
 
   void _onTabTapped(int index) {
     final tab = _HomeTab.values[index];
@@ -147,14 +148,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     setState(() => _currentTab = tab);
   }
 
-
   void _openProfile() {
     Navigator.push(
       context,
       MaterialPageRoute(builder: (_) => const ProfileScreen()),
     );
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -165,7 +164,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return StreamBuilder<ProfileModel?>(
       stream: _profileStream,
       builder: (context, snapshot) {
-       
         final profile = snapshot.data ?? _cachedProfile;
         final isFirstLoad =
             snapshot.connectionState == ConnectionState.waiting &&
@@ -173,7 +171,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         final hasError = _profileError != null || snapshot.hasError;
 
         return Scaffold(
-        
           appBar: AppBar(
             scrolledUnderElevation: 2,
             elevation: 0,
@@ -195,8 +192,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ),
             actions: [
-             
-          
               Padding(
                 padding: const EdgeInsets.only(right: 8),
                 child: IconButton(
@@ -210,24 +205,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
             ],
           ),
-
-       
           body: MfaWidget(
             authRepository: AuthRepository(),
             child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 280),
-            switchInCurve: Curves.easeOut,
-            switchOutCurve: Curves.easeIn,
-            child: _buildBody(
-              context,
-              isFirstLoad: isFirstLoad,
-              hasError: hasError,
-              profile: profile,
-              colorScheme: colorScheme,
-            ),
+              duration: const Duration(milliseconds: 280),
+              switchInCurve: Curves.easeOut,
+              switchOutCurve: Curves.easeIn,
+              child: _buildBody(
+                context,
+                isFirstLoad: isFirstLoad,
+                hasError: hasError,
+                profile: profile,
+                colorScheme: colorScheme,
+              ),
             ),
           ),
-
           bottomNavigationBar: NavigationBar(
             selectedIndex: _currentTab.index,
             onDestinationSelected: _onTabTapped,
@@ -247,7 +239,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-
   Widget _buildBody(
     BuildContext context, {
     required bool isFirstLoad,
@@ -255,9 +246,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required ProfileModel? profile,
     required ColorScheme colorScheme,
   }) {
-    if (isFirstLoad) {
-      return Center(child: const LoadingIndicator());
-    }
+    if (isFirstLoad) return const Center(child: LoadingIndicator());
 
     if (hasError) {
       return HomeErrorState(
@@ -298,4 +287,3 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     return 'Something went wrong. Please try again.';
   }
 }
-

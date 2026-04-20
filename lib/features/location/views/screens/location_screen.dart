@@ -1,11 +1,15 @@
 import 'dart:async';
 import 'dart:math' as math;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
 import 'package:flutter_education_app/features/location/models/local_model.dart';
 import 'package:flutter_education_app/core/services/cloud/location_service.dart';
+import 'package:flutter_education_app/features/profile/models/profile_model.dart';
+import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
+import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
 import 'package:flutter_map/flutter_map.dart'
     show
         CameraFit,
@@ -29,7 +33,7 @@ class FriendLocationResult {
     required this.fullName,
     required this.role,
     required this.profilePhoto,
-    this.location,
+    this.locations = const [],
   });
 
   final String userId;
@@ -37,7 +41,43 @@ class FriendLocationResult {
   final String fullName;
   final String role;
   final String profilePhoto;
-  final LocationModel? location;
+  final List<LocationModel> locations;
+
+  LocationModel? get defaultLocation {
+    final visible = locations.where((l) => l.isVisible == true).toList();
+    return visible.firstWhereOrNull(
+          (l) => l.type == LocationType.customAddress && l.isDefault,
+        ) ??
+        visible.firstWhereOrNull(
+          (l) => l.type == LocationType.currentLocation,
+        ) ??
+        (visible.isNotEmpty ? visible.first : null);
+  }
+
+  LocationModel? locationForRole(String targetRole) {
+    final roleLocations = locations
+        .where((l) => l.role == targetRole && l.isVisible == true)
+        .toList();
+    return roleLocations.firstWhereOrNull(
+          (l) => l.type == LocationType.customAddress && l.isDefault,
+        ) ??
+        roleLocations.firstWhereOrNull(
+          (l) => l.type == LocationType.currentLocation,
+        ) ??
+        (roleLocations.isNotEmpty ? roleLocations.first : null);
+  }
+
+  List<String> get availableRoles =>
+      locations.map((l) => l.role).toSet().toList();
+}
+
+extension _FirstWhereOrNull<T> on Iterable<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final e in this) {
+      if (test(e)) return e;
+    }
+    return null;
+  }
 }
 
 class LiveMapScreen extends StatefulWidget {
@@ -58,6 +98,7 @@ class LiveMapScreen extends StatefulWidget {
 
 class _LiveMapScreenState extends State<LiveMapScreen> {
   final _chatRepository = ChatRepository();
+  final _profileRepository = ProfileRepository();
   List<FriendLocationResult> _friends = [];
   bool _loading = true;
 
@@ -68,6 +109,7 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
   }
 
   Future<void> _loadFriends() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
       final friendList = await _chatRepository.getFriendsList(
@@ -77,12 +119,13 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
 
       for (final friend in friendList) {
         final uid = friend['user_id'] as String? ?? '';
-        final role = friend['role'] as String? ?? 'student';
         if (uid.isEmpty) continue;
 
-        LocationModel? location;
+        List<LocationModel> allLocations = [];
         try {
-          location = await widget.locationService.getDefaultLocation(uid, role);
+          allLocations = await widget.locationService.getAllLocationsForUser(
+            uid,
+          );
         } catch (_) {}
 
         results.add(
@@ -90,9 +133,9 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
             userId: uid,
             username: friend['username'] as String? ?? '',
             fullName: friend['full_name'] as String? ?? '',
-            role: role,
+            role: friend['role'] as String? ?? 'student',
             profilePhoto: friend['profile_photo'] as String? ?? '',
-            location: location,
+            locations: allLocations,
           ),
         );
       }
@@ -104,10 +147,26 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
     }
   }
 
+  Future<ProfileModel?> _fetchProfile(String userId) async {
+    try {
+      final collectionPath = _profileRepository.collectionPath.firstOrNull;
+      if (collectionPath == null) return null;
+      final snap = await FirebaseFirestore.instance
+          .collection(collectionPath)
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return null;
+      return _profileRepository.fromSnapshot(snap.docs.first);
+    } catch (_) {
+      return null;
+    }
+  }
+
   void _openDistanceMap(FriendLocationResult friend) {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, _) => FadeTransition(
+        pageBuilder: (_, animation, __) => FadeTransition(
           opacity: animation,
           child: DistanceMapScreen(
             currentUserId: widget.currentUserId,
@@ -121,38 +180,316 @@ class _LiveMapScreenState extends State<LiveMapScreen> {
     );
   }
 
+  void _showFriendBottomSheet(FriendLocationResult friend) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _FriendBottomSheet(
+        friend: friend,
+        fetchProfile: _fetchProfile,
+        onTrackDistance: () {
+          Navigator.pop(context);
+          _openDistanceMap(friend);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    Theme.of(context);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Track Distance'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loadFriends,
+            onPressed: _loading ? null : _loadFriends,
           ),
         ],
       ),
       body: NetworkWidget(
         child: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _friends.isEmpty
-          ? _EmptyFriends()
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _friends.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (context, index) {
-                final friend = _friends[index];
-                return _FriendLocationCard(
-                  friend: friend,
-                  onTap: () => _openDistanceMap(friend),
-                );
-              },
+            ? const Center(child: CircularProgressIndicator())
+            : _friends.isEmpty
+            ? const _EmptyFriends()
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _friends.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                itemBuilder: (context, index) {
+                  final friend = _friends[index];
+                  return _FriendLocationCard(
+                    friend: friend,
+                    onTap: () => _showFriendBottomSheet(friend),
+                  );
+                },
               ),
       ),
+    );
+  }
+}
+
+class _FriendBottomSheet extends StatefulWidget {
+  const _FriendBottomSheet({
+    required this.friend,
+    required this.fetchProfile,
+    required this.onTrackDistance,
+  });
+
+  final FriendLocationResult friend;
+  final Future<ProfileModel?> Function(String userId) fetchProfile;
+  final VoidCallback onTrackDistance;
+
+  @override
+  State<_FriendBottomSheet> createState() => _FriendBottomSheetState();
+}
+
+class _FriendBottomSheetState extends State<_FriendBottomSheet> {
+  ProfileModel? _profile;
+  bool _loadingProfile = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final profile = await widget.fetchProfile(widget.friend.userId);
+    if (mounted)
+      setState(() {
+        _profile = profile;
+        _loadingProfile = false;
+      });
+  }
+
+  void _openProfile(BuildContext context) {
+    Navigator.pop(context);
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ProfileScreen(viewUserId: widget.friend.userId),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final friend = widget.friend;
+    final bottomPad = MediaQuery.of(context).padding.bottom;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomPad),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.outlineVariant,
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              GestureDetector(
+                onTap: () => _openProfile(context),
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: theme.colorScheme.secondaryContainer,
+                  backgroundImage: friend.profilePhoto.isNotEmpty
+                      ? NetworkImage(friend.profilePhoto)
+                      : null,
+                  child: friend.profilePhoto.isEmpty
+                      ? Icon(
+                          friend.role == 'instructor'
+                              ? Icons.school_rounded
+                              : Icons.person_rounded,
+                          color: theme.colorScheme.onSecondaryContainer,
+                          size: 28,
+                        )
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      friend.fullName.isNotEmpty
+                          ? friend.fullName
+                          : '@${friend.username}',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    Text(
+                      '@${friend.username}',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.secondaryContainer,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(
+                        friend.role == 'instructor' ? 'TUTOR' : 'STUDENT',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: theme.colorScheme.onSecondaryContainer,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
+          if (_loadingProfile)
+            const Center(child: CircularProgressIndicator())
+          else if (_profile != null) ...[
+            Divider(color: theme.colorScheme.outlineVariant),
+            const SizedBox(height: 12),
+            if (_profile!.profile.bio.isNotEmpty) ...[
+              Text(
+                'About',
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _profile!.profile.bio,
+                style: theme.textTheme.bodySmall,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 12),
+            ],
+            if (_profile!.profile.location.city.isNotEmpty ||
+                _profile!.profile.location.country.isNotEmpty) ...[
+              _SheetInfoRow(
+                icon: Icons.location_city_rounded,
+                label: [
+                  _profile!.profile.location.city,
+                  _profile!.profile.location.country,
+                ].where((s) => s.isNotEmpty).join(', '),
+                theme: theme,
+              ),
+              const SizedBox(height: 6),
+            ],
+            if (friend.role == 'instructor' &&
+                _profile!.instructorProfile.headline.isNotEmpty) ...[
+              _SheetInfoRow(
+                icon: Icons.work_outline_rounded,
+                label: _profile!.instructorProfile.headline,
+                theme: theme,
+              ),
+              const SizedBox(height: 6),
+            ],
+            if (friend.role == 'instructor' &&
+                _profile!.instructorProfile.expertise.isNotEmpty) ...[
+              _SheetInfoRow(
+                icon: Icons.star_outline_rounded,
+                label: _profile!.instructorProfile.expertise.take(3).join(', '),
+                theme: theme,
+              ),
+              const SizedBox(height: 6),
+            ],
+            if (friend.role == 'student' &&
+                _profile!.studentProfile.interests.isNotEmpty) ...[
+              _SheetInfoRow(
+                icon: Icons.interests_rounded,
+                label: _profile!.studentProfile.interests.take(3).join(', '),
+                theme: theme,
+              ),
+              const SizedBox(height: 6),
+            ],
+            if (friend.locations.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              _SheetInfoRow(
+                icon: Icons.place_rounded,
+                label: friend.locations.length == 1
+                    ? '1 location shared'
+                    : '${friend.locations.length} locations shared',
+                theme: theme,
+              ),
+            ],
+          ],
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () => _openProfile(context),
+                  icon: const Icon(Icons.person_rounded, size: 18),
+                  label: const Text('View Profile'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: widget.onTrackDistance,
+                  icon: const Icon(Icons.map_rounded, size: 18),
+                  label: const Text('Track Distance'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SheetInfoRow extends StatelessWidget {
+  const _SheetInfoRow({
+    required this.icon,
+    required this.label,
+    required this.theme,
+  });
+
+  final IconData icon;
+  final String label;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 14, color: theme.colorScheme.primary),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            label,
+            style: theme.textTheme.bodySmall,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -185,10 +522,13 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
   bool _loading = true;
   bool _isRefreshing = false;
 
+  String _selectedFriendRole = '';
+  List<String> _friendAvailableRoles = [];
+
   late final AnimationController _pulseController;
   late final Animation<double> _pulseAnim;
 
-  StreamSubscription? _mySub;
+  StreamSubscription<LocationModel?>? _myLocationSub;
 
   @override
   void initState() {
@@ -200,42 +540,53 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
     _pulseAnim = Tween<double>(begin: 0.6, end: 1.0).animate(
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
+
+    _friendAvailableRoles = widget.targetFriend.availableRoles;
+    _selectedFriendRole = _friendAvailableRoles.isNotEmpty
+        ? _friendAvailableRoles.first
+        : widget.targetFriend.role;
+
     _load();
   }
 
   @override
   void dispose() {
     _pulseController.dispose();
-    _mySub?.cancel();
+    _myLocationSub?.cancel();
     super.dispose();
   }
 
   Future<void> _load() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
-      _mySub = widget.locationService
+      _myLocationSub = widget.locationService
           .watchCurrentLocation(widget.currentUserId, widget.currentRole)
           .listen((loc) {
-            if (mounted) {
-              setState(() => _myLocation = loc);
-              _recalculate();
-              if (loc != null && _theirLocation != null) _fitBounds();
-            }
+            if (!mounted) return;
+            setState(() => _myLocation = loc);
+            _recalculate();
+            if (loc != null) _fitBounds();
           });
 
       _theirLocation =
-          widget.targetFriend.location ??
-          await widget.locationService.getDefaultLocation(
-            widget.targetFriend.userId,
-            widget.targetFriend.role,
-          );
-
-      _recalculate();
+          widget.targetFriend.locationForRole(_selectedFriendRole);
     } catch (_) {
     } finally {
-      if (mounted) setState(() => _loading = false);
-      _fitBounds();
+      if (mounted) {
+        setState(() => _loading = false);
+        _fitBounds();
+      }
     }
+  }
+
+  void _switchFriendRole(String role) {
+    setState(() {
+      _selectedFriendRole = role;
+      _theirLocation = widget.targetFriend.locationForRole(role);
+    });
+    _recalculate();
+    _fitBounds();
   }
 
   void _recalculate() {
@@ -244,7 +595,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
       _myLocation!.coordinates,
       _theirLocation!.coordinates,
     );
-    setState(() => _distanceKm = km);
+    if (mounted) setState(() => _distanceKm = km);
   }
 
   double _haversineKm(LatLng a, LatLng b) {
@@ -257,7 +608,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
             math.cos(_rad(b.latitude)) *
             math.sin(dLon / 2) *
             math.sin(dLon / 2);
-    return 2 * r * math.asin(math.sqrt(h));
+    return 2 * r * math.asin(math.sqrt(h.clamp(0.0, 1.0)));
   }
 
   double _rad(double deg) => deg * math.pi / 180;
@@ -265,29 +616,32 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
   void _fitBounds() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
+
       if (_myLocation != null && _theirLocation != null) {
+        final a = _myLocation!.coordinates;
+        final b = _theirLocation!.coordinates;
+
+        final latDiff = (a.latitude - b.latitude).abs();
+        final lonDiff = (a.longitude - b.longitude).abs();
+
+        const epsilon = 0.0001;
+
+        if (latDiff < epsilon && lonDiff < epsilon) {
+          _mapController.move(ll.LatLng(a.latitude, a.longitude), 15);
+          return;
+        }
+
         final bounds = LatLngBounds(
           ll.LatLng(
-            math.min(
-              _myLocation!.coordinates.latitude,
-              _theirLocation!.coordinates.latitude,
-            ),
-            math.min(
-              _myLocation!.coordinates.longitude,
-              _theirLocation!.coordinates.longitude,
-            ),
+            math.min(a.latitude, b.latitude),
+            math.min(a.longitude, b.longitude),
           ),
           ll.LatLng(
-            math.max(
-              _myLocation!.coordinates.latitude,
-              _theirLocation!.coordinates.latitude,
-            ),
-            math.max(
-              _myLocation!.coordinates.longitude,
-              _theirLocation!.coordinates.longitude,
-            ),
+            math.max(a.latitude, b.latitude),
+            math.max(a.longitude, b.longitude),
           ),
         );
+
         _mapController.fitCamera(
           CameraFit.bounds(bounds: bounds, padding: const EdgeInsets.all(80)),
         );
@@ -304,6 +658,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
   }
 
   Future<void> _refreshMyLocation() async {
+    if (_isRefreshing) return;
     setState(() => _isRefreshing = true);
     try {
       final model = await widget.locationService.saveCurrentLocation(
@@ -319,7 +674,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text('Could not update location: $e'),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -332,6 +687,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final topPad = MediaQuery.of(context).padding.top;
 
     return Scaffold(
       body: Stack(
@@ -340,9 +696,8 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
             const Center(child: CircularProgressIndicator())
           else
             _buildMap(theme),
-
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
+            top: topPad + 8,
             left: 16,
             child: _MapIconButton(
               onTap: () => Navigator.of(context).pop(),
@@ -350,7 +705,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
             ),
           ),
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
+            top: topPad + 8,
             right: 16,
             child: _MapIconButton(
               onTap: _isRefreshing ? null : _refreshMyLocation,
@@ -363,12 +718,27 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
                   : const Icon(Icons.my_location_rounded),
             ),
           ),
+          if (_friendAvailableRoles.length > 1)
+            Positioned(
+              top: topPad + 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: _RoleToggle(
+                  roles: _friendAvailableRoles,
+                  selectedRole: _selectedFriendRole,
+                  onRoleSelected: _switchFriendRole,
+                  theme: theme,
+                ),
+              ),
+            ),
           Positioned(
             bottom: 0,
             left: 0,
             right: 0,
             child: _DistancePanel(
               friend: widget.targetFriend,
+              selectedFriendRole: _selectedFriendRole,
               myLocation: _myLocation,
               theirLocation: _theirLocation,
               distanceKm: _distanceKm,
@@ -426,27 +796,31 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
             if (myLL != null)
               Marker(
                 point: myLL,
-                width: 60,
-                height: 60,
+                width: 72,
+                height: 80,
                 child: _PulsingMarker(
                   animation: _pulseAnim,
                   color: theme.colorScheme.primary,
-                  icon: Icons.person_pin_circle_rounded,
                   label: 'You',
+                  photoUrl: '',
+                  fallbackIcon: Icons.person_pin_circle_rounded,
                   theme: theme,
                 ),
               ),
             if (theirLL != null)
               Marker(
                 point: theirLL,
-                width: 60,
-                height: 60,
+                width: 72,
+                height: 80,
                 child: _StaticMarker(
                   color: theme.colorScheme.tertiary,
-                  icon: widget.targetFriend.role == 'instructor'
+                  label: widget.targetFriend.fullName.isNotEmpty
+                      ? widget.targetFriend.fullName
+                      : widget.targetFriend.username,
+                  photoUrl: widget.targetFriend.profilePhoto,
+                  fallbackIcon: _selectedFriendRole == 'instructor'
                       ? Icons.school_rounded
                       : Icons.person_rounded,
-                  label: widget.targetFriend.username,
                   theme: theme,
                 ),
               ),
@@ -457,60 +831,147 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
   }
 }
 
+class _RoleToggle extends StatelessWidget {
+  const _RoleToggle({
+    required this.roles,
+    required this.selectedRole,
+    required this.onRoleSelected,
+    required this.theme,
+  });
+
+  final List<String> roles;
+  final String selectedRole;
+  final void Function(String) onRoleSelected;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: theme.colorScheme.outlineVariant),
+        boxShadow: [
+          BoxShadow(
+            color: theme.colorScheme.shadow.withOpacity(0.12),
+            blurRadius: 8,
+          ),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: roles.map((role) {
+          final isSelected = role == selectedRole;
+          return GestureDetector(
+            onTap: () => onRoleSelected(role),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? theme.colorScheme.primaryContainer
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    role == 'instructor'
+                        ? Icons.school_rounded
+                        : Icons.person_rounded,
+                    size: 14,
+                    color: isSelected
+                        ? theme.colorScheme.onPrimaryContainer
+                        : theme.colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    role == 'instructor' ? 'Tutor' : 'Student',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: isSelected
+                          ? theme.colorScheme.onPrimaryContainer
+                          : theme.colorScheme.onSurfaceVariant,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+}
+
 class _PulsingMarker extends StatelessWidget {
   const _PulsingMarker({
     required this.animation,
     required this.color,
-    required this.icon,
     required this.label,
+    required this.photoUrl,
+    required this.fallbackIcon,
     required this.theme,
   });
 
   final Animation<double> animation;
   final Color color;
-  final IconData icon;
   final String label;
+  final String photoUrl;
+  final IconData fallbackIcon;
   final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (_, _) => Column(
+      builder: (_, __) => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Stack(
             alignment: Alignment.center,
             children: [
               Container(
-                width: 42 * animation.value,
-                height: 42 * animation.value,
+                width: 52 * animation.value,
+                height: 52 * animation.value,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: color.withOpacity(0.2 * animation.value),
                 ),
               ),
               Container(
-                width: 36,
-                height: 36,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: color,
+                  border: Border.all(color: color, width: 2.5),
                   boxShadow: [
                     BoxShadow(
-                      color: color.withOpacity(0.5),
+                      color: color.withOpacity(0.45),
                       blurRadius: 12,
                       spreadRadius: 2,
                     ),
                   ],
                 ),
-                child: Icon(icon, color: theme.colorScheme.onPrimary, size: 18),
+                child: ClipOval(
+                  child: photoUrl.isNotEmpty
+                      ? Image.network(
+                          photoUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _iconFallback(color),
+                        )
+                      : _iconFallback(color),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 2),
+          const SizedBox(height: 3),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
             decoration: BoxDecoration(
               color: color,
               borderRadius: BorderRadius.circular(4),
@@ -522,25 +983,34 @@ class _PulsingMarker extends StatelessWidget {
                 fontWeight: FontWeight.w800,
                 fontSize: 9,
               ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _iconFallback(Color color) => Container(
+    color: color.withOpacity(0.15),
+    child: Icon(fallbackIcon, color: color, size: 22),
+  );
 }
 
 class _StaticMarker extends StatelessWidget {
   const _StaticMarker({
     required this.color,
-    required this.icon,
     required this.label,
+    required this.photoUrl,
+    required this.fallbackIcon,
     required this.theme,
   });
 
   final Color color;
-  final IconData icon;
   final String label;
+  final String photoUrl;
+  final IconData fallbackIcon;
   final ThemeData theme;
 
   @override
@@ -549,11 +1019,11 @@ class _StaticMarker extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          width: 36,
-          height: 36,
+          width: 42,
+          height: 42,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: color,
+            border: Border.all(color: color, width: 2.5),
             boxShadow: [
               BoxShadow(
                 color: color.withOpacity(0.4),
@@ -562,11 +1032,20 @@ class _StaticMarker extends StatelessWidget {
               ),
             ],
           ),
-          child: Icon(icon, color: theme.colorScheme.onTertiary, size: 18),
+          child: ClipOval(
+            child: photoUrl.isNotEmpty
+                ? Image.network(
+                    photoUrl,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, __, ___) => _iconFallback(),
+                  )
+                : _iconFallback(),
+          ),
         ),
-        const SizedBox(height: 2),
+        const SizedBox(height: 3),
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          constraints: const BoxConstraints(maxWidth: 72),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
           decoration: BoxDecoration(
             color: color,
             borderRadius: BorderRadius.circular(4),
@@ -585,17 +1064,24 @@ class _StaticMarker extends StatelessWidget {
       ],
     );
   }
+
+  Widget _iconFallback() => Container(
+    color: color.withOpacity(0.15),
+    child: Icon(fallbackIcon, color: color, size: 22),
+  );
 }
 
 class _DistancePanel extends StatelessWidget {
   const _DistancePanel({
     required this.friend,
+    required this.selectedFriendRole,
     required this.myLocation,
     required this.theirLocation,
     required this.distanceKm,
   });
 
   final FriendLocationResult friend;
+  final String selectedFriendRole;
   final LocationModel? myLocation;
   final LocationModel? theirLocation;
   final double? distanceKm;
@@ -638,7 +1124,7 @@ class _DistancePanel extends StatelessWidget {
               children: [
                 _FriendAvatar(
                   photoUrl: friend.profilePhoto,
-                  role: friend.role,
+                  role: selectedFriendRole,
                   theme: theme,
                 ),
                 const SizedBox(width: 12),
@@ -655,7 +1141,7 @@ class _DistancePanel extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '@${friend.username}  ·  ${friend.role.toUpperCase()}',
+                        '@${friend.username}  ·  ${selectedFriendRole.toUpperCase()}',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
                         ),
@@ -709,10 +1195,10 @@ class _DistancePanel extends StatelessWidget {
               const SizedBox(height: 8),
             if (theirLocation != null)
               _AddressRow(
-                icon: friend.role == 'instructor'
+                icon: selectedFriendRole == 'instructor'
                     ? Icons.school_rounded
                     : Icons.person_rounded,
-                label: '${friend.username}\'s location',
+                label: "${friend.username}'s location",
                 address: theirLocation!.address.formattedAddress,
                 theme: theme,
                 isPrimary: false,
@@ -724,7 +1210,7 @@ class _DistancePanel extends StatelessWidget {
               ),
             if (theirLocation == null)
               _WarningRow(
-                message: '${friend.username} has not shared their location.',
+                message: '${friend.username} has no location for this role.',
                 theme: theme,
               ),
           ],
@@ -795,6 +1281,7 @@ class _AddressRow extends StatelessWidget {
 
 class _WarningRow extends StatelessWidget {
   const _WarningRow({required this.message, required this.theme});
+
   final String message;
   final ThemeData theme;
 
@@ -838,6 +1325,7 @@ class _FriendLocationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final displayLocation = friend.defaultLocation;
 
     return Card(
       child: InkWell(
@@ -871,7 +1359,7 @@ class _FriendLocationCard extends StatelessWidget {
                         color: theme.colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    if (friend.location != null)
+                    if (displayLocation != null)
                       Row(
                         children: [
                           Icon(
@@ -882,9 +1370,9 @@ class _FriendLocationCard extends StatelessWidget {
                           const SizedBox(width: 3),
                           Expanded(
                             child: Text(
-                              friend.location!.address.city.isNotEmpty
-                                  ? friend.location!.address.city
-                                  : friend.location!.address.formattedAddress,
+                              displayLocation.address.city.isNotEmpty
+                                  ? displayLocation.address.city
+                                  : displayLocation.address.formattedAddress,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: theme.colorScheme.primary,
                               ),
@@ -899,6 +1387,33 @@ class _FriendLocationCard extends StatelessWidget {
                         'No location shared',
                         style: theme.textTheme.labelSmall?.copyWith(
                           color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    if (friend.availableRoles.length > 1)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          children: friend.availableRoles.map((r) {
+                            return Container(
+                              margin: const EdgeInsets.only(right: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.tertiaryContainer,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                r == 'instructor' ? 'TUTOR' : 'STUDENT',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  color: theme.colorScheme.onTertiaryContainer,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 9,
+                                ),
+                              ),
+                            );
+                          }).toList(),
                         ),
                       ),
                   ],
@@ -965,6 +1480,7 @@ class _FriendAvatar extends StatelessWidget {
 
 class _MapIconButton extends StatelessWidget {
   const _MapIconButton({required this.onTap, required this.child});
+
   final VoidCallback? onTap;
   final Widget child;
 
@@ -997,6 +1513,8 @@ class _MapIconButton extends StatelessWidget {
 }
 
 class _EmptyFriends extends StatelessWidget {
+  const _EmptyFriends();
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);

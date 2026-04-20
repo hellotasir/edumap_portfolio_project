@@ -1,19 +1,26 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/services/cloud/location_service.dart';
+import 'package:flutter_education_app/core/services/cloud/profile_location_service.dart';
 import 'package:flutter_education_app/features/location/models/local_model.dart';
 import 'package:flutter_education_app/features/location/views/screens/location_screen.dart';
-import 'package:flutter_education_app/core/services/cloud/location_service.dart';
+import 'package:flutter_education_app/features/location/views/screens/manage_location_screen.dart';
+import 'package:flutter_education_app/features/location/views/widgets/location_tile.dart';
+import 'package:flutter_education_app/features/subscription/views/widgets/error_banner.dart';
+import 'package:flutter_education_app/features/location/repositories/profile_location_repository.dart';
 
 class LocationWidget extends StatefulWidget {
   const LocationWidget({
     super.key,
     required this.userId,
     required this.role,
+    required this.profileLocationService,
     required this.locationService,
     this.onSaved,
   });
 
   final String userId;
   final String role;
+  final ProfileLocationService profileLocationService;
   final LocationService locationService;
   final void Function(LocationModel)? onSaved;
 
@@ -24,6 +31,7 @@ class LocationWidget extends StatefulWidget {
 class _LocationWidgetState extends State<LocationWidget> {
   bool _isLoading = false;
   LocationModel? _current;
+  ProfileLocationSnapshot? _profileSnapshot;
   String? _error;
 
   bool get _isInstructor => widget.role == 'instructor';
@@ -31,15 +39,24 @@ class _LocationWidgetState extends State<LocationWidget> {
   @override
   void initState() {
     super.initState();
-    _loadCurrent();
+    _loadCurrentLocation();
+    _listenToProfileSnapshot();
   }
 
-  Future<void> _loadCurrent() async {
-    final loc = await widget.locationService
+  Future<void> _loadCurrentLocation() async {
+    final loc = await widget.profileLocationService
         .watchCurrentLocation(widget.userId, widget.role)
         .first
         .catchError((_) => null);
     if (mounted) setState(() => _current = loc);
+  }
+
+  void _listenToProfileSnapshot() {
+    widget.profileLocationService.watchProfileLocation(widget.userId).listen((
+      snap,
+    ) {
+      if (mounted) setState(() => _profileSnapshot = snap);
+    });
   }
 
   Future<void> _shareLocation() async {
@@ -48,14 +65,14 @@ class _LocationWidgetState extends State<LocationWidget> {
       _error = null;
     });
     try {
-      final model = await widget.locationService.saveCurrentLocation(
+      final model = await widget.profileLocationService.saveCurrentLocation(
         userId: widget.userId,
         role: widget.role,
       );
       if (mounted) {
         setState(() => _current = model);
         widget.onSaved?.call(model);
-        _snack('Location updated', isError: false);
+        _snack('Location updated & synced to profile', isError: false);
       }
     } on LocationPermissionException catch (e) {
       if (mounted) setState(() => _error = e.message);
@@ -68,10 +85,37 @@ class _LocationWidgetState extends State<LocationWidget> {
     }
   }
 
+  Future<void> _revokeFromProfile() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Remove from profile?'),
+        content: const Text(
+          'Your location will no longer appear on your public profile. '
+          'Your location records will be kept.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remove'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await widget.profileLocationService.revokeProfileLocation(widget.userId);
+      if (mounted) _snack('Location removed from profile', isError: false);
+    }
+  }
+
   void _openMap() {
     Navigator.of(context).push(
       PageRouteBuilder(
-        pageBuilder: (_, animation, _) => FadeTransition(
+        pageBuilder: (_, animation, __) => FadeTransition(
           opacity: animation,
           child: LiveMapScreen(
             currentUserId: widget.userId,
@@ -122,22 +166,25 @@ class _LocationWidgetState extends State<LocationWidget> {
                   ),
                 ),
                 const Spacer(),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 3,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.colorScheme.secondaryContainer,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    'GPS',
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.onSecondaryContainer,
+                if (_profileSnapshot != null)
+                  _ProfileSyncBadge(theme: theme)
+                else
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.secondaryContainer,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'GPS',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
                     ),
                   ),
-                ),
               ],
             ),
             const SizedBox(height: 4),
@@ -147,9 +194,13 @@ class _LocationWidgetState extends State<LocationWidget> {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
             ),
+            if (_profileSnapshot != null) ...[
+              const SizedBox(height: 8),
+              _ProfileSyncDetail(snapshot: _profileSnapshot!, theme: theme),
+            ],
             const Divider(height: 28),
             if (_current != null) ...[
-              _LocationTile(
+              LocationTile(
                 icon: Icons.location_on_rounded,
                 label: 'Current position',
                 address: _current!.address.formattedAddress,
@@ -167,12 +218,12 @@ class _LocationWidgetState extends State<LocationWidget> {
                 ),
               ),
             if (_error != null) ...[
-              _ErrorBanner(message: _error!),
+              ErrorBanner(message: _error!),
               const SizedBox(height: 12),
             ],
             SizedBox(
               width: double.infinity,
-              child: FilledButton.icon(
+              child: OutlinedButton.icon(
                 onPressed: _isLoading ? null : _shareLocation,
                 icon: _isLoading
                     ? const SizedBox(
@@ -195,6 +246,17 @@ class _LocationWidgetState extends State<LocationWidget> {
                 label: const Text('Track Distance'),
               ),
             ),
+            if (_profileSnapshot != null) ...[
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: _revokeFromProfile,
+                  icon: const Icon(Icons.person_off_rounded),
+                  label: const Text('Remove from Profile'),
+                ),
+              ),
+            ],
             if (_isInstructor) ...[
               const SizedBox(height: 10),
               SizedBox(
@@ -205,7 +267,7 @@ class _LocationWidgetState extends State<LocationWidget> {
                       builder: (_) => ManageLocationsScreen(
                         userId: widget.userId,
                         role: widget.role,
-                        locationService: widget.locationService,
+                        profileLocationService: widget.profileLocationService,
                       ),
                     ),
                   ),
@@ -221,284 +283,34 @@ class _LocationWidgetState extends State<LocationWidget> {
   }
 }
 
-class ManageLocationsScreen extends StatefulWidget {
-  const ManageLocationsScreen({
-    super.key,
-    required this.userId,
-    required this.role,
-    required this.locationService,
-  });
+class _ProfileSyncBadge extends StatelessWidget {
+  const _ProfileSyncBadge({required this.theme});
 
-  final String userId;
-  final String role;
-  final LocationService locationService;
-
-  @override
-  State<ManageLocationsScreen> createState() => _ManageLocationsScreenState();
-}
-
-class _ManageLocationsScreenState extends State<ManageLocationsScreen> {
-  bool _addLoading = false;
-  String? _error;
-
-  final _addressCtrl = TextEditingController();
-  final _labelCtrl = TextEditingController();
-
-  @override
-  void dispose() {
-    _addressCtrl.dispose();
-    _labelCtrl.dispose();
-    super.dispose();
-  }
-
-  Future<void> _addCustomAddress() async {
-    final address = _addressCtrl.text.trim();
-    if (address.isEmpty) {
-      setState(() => _error = 'Please enter an address.');
-      return;
-    }
-    setState(() {
-      _addLoading = true;
-      _error = null;
-    });
-    try {
-      await widget.locationService.saveCustomLocation(
-        userId: widget.userId,
-        role: widget.role,
-        rawAddress: address,
-        label: _labelCtrl.text.trim().isNotEmpty
-            ? _labelCtrl.text.trim()
-            : null,
-        isVisible: true,
-      );
-      if (mounted) {
-        _addressCtrl.clear();
-        _labelCtrl.clear();
-        _snack('Address saved');
-      }
-    } on GeocodingException catch (e) {
-      if (mounted) {
-        setState(() => _error = 'Could not find address: ${e.message}');
-      }
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _addLoading = false);
-    }
-  }
-
-  Future<void> _setDefault(LocationModel model) async {
-    if (model.id == null) return;
-    await widget.locationService.setDefaultLocation(
-      userId: widget.userId,
-      role: widget.role,
-      locationId: model.id!,
-    );
-    _snack('Default address updated');
-  }
-
-  Future<void> _delete(LocationModel model) async {
-    if (model.id == null) return;
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Delete address?'),
-        content: Text(model.label ?? model.address.formattedAddress),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-    if (confirm == true && model.id != null) {
-      await widget.locationService.deleteCustomLocation(model.id!);
-      if (mounted) _snack('Address deleted');
-    }
-  }
-
-  void _snack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), behavior: SnackBarBehavior.floating),
-    );
-  }
+  final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Saved Addresses')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            StreamBuilder<List<LocationModel>>(
-              stream: widget.locationService.watchAllLocations(
-                widget.userId,
-                widget.role,
-              ),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-                final locations = (snapshot.data ?? [])
-                    .where((l) => l.type == LocationType.customAddress)
-                    .toList();
-
-                if (locations.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    child: Text(
-                      'No saved addresses yet.',
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  );
-                }
-
-                return Column(
-                  children: locations
-                      .map(
-                        (loc) => _SavedAddressTile(
-                          location: loc,
-                          onSetDefault: () => _setDefault(loc),
-                          onDelete: () => _delete(loc),
-                        ),
-                      )
-                      .toList(),
-                );
-              },
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Add New Address',
-              style: theme.textTheme.titleSmall?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _labelCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Label (optional)',
-                hintText: 'e.g. Home, Studio',
-                prefixIcon: Icon(Icons.label_outline_rounded),
-                border: OutlineInputBorder(),
-              ),
-              textInputAction: TextInputAction.next,
-            ),
-            const SizedBox(height: 12),
-            TextField(
-              controller: _addressCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Address *',
-                hintText: 'e.g. 221B Baker Street, London',
-                prefixIcon: Icon(Icons.location_on_outlined),
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-              textInputAction: TextInputAction.done,
-              onSubmitted: (_) => _addCustomAddress(),
-            ),
-            if (_error != null) ...[
-              const SizedBox(height: 8),
-              _ErrorBanner(message: _error!),
-            ],
-            const SizedBox(height: 14),
-            SizedBox(
-              width: double.infinity,
-              child: FilledButton.icon(
-                onPressed: _addLoading ? null : _addCustomAddress,
-                icon: _addLoading
-                    ? const SizedBox(
-                        width: 18,
-                        height: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.add_rounded),
-                label: const Text('Save Address'),
-              ),
-            ),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: theme.colorScheme.tertiaryContainer,
+        borderRadius: BorderRadius.circular(20),
       ),
-    );
-  }
-}
-
-class _SavedAddressTile extends StatelessWidget {
-  const _SavedAddressTile({
-    required this.location,
-    required this.onSetDefault,
-    required this.onDelete,
-  });
-
-  final LocationModel location;
-  final VoidCallback onSetDefault;
-  final VoidCallback onDelete;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return ListTile(
-      contentPadding: EdgeInsets.zero,
-      leading: CircleAvatar(
-        backgroundColor: location.isDefault
-            ? theme.colorScheme.primaryContainer
-            : theme.colorScheme.surfaceContainerHighest,
-        child: Icon(
-          Icons.location_on_rounded,
-          color: location.isDefault
-              ? theme.colorScheme.onPrimaryContainer
-              : theme.colorScheme.onSurfaceVariant,
-          size: 20,
-        ),
-      ),
-      title: Text(
-        location.label ?? 'Address',
-        style: theme.textTheme.bodyMedium?.copyWith(
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            location.address.formattedAddress,
-            style: theme.textTheme.bodySmall,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (location.isDefault)
-            Text(
-              'Default',
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.primary,
-              ),
-            ),
-        ],
-      ),
-      trailing: Row(
+      child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          if (!location.isDefault)
-            IconButton(
-              icon: const Icon(Icons.star_outline_rounded),
-              tooltip: 'Set as default',
-              onPressed: onSetDefault,
+          Icon(
+            Icons.cloud_done_rounded,
+            size: 12,
+            color: theme.colorScheme.onTertiaryContainer,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            'Synced',
+            style: theme.textTheme.labelSmall?.copyWith(
+              color: theme.colorScheme.onTertiaryContainer,
+              fontWeight: FontWeight.w700,
             ),
-          IconButton(
-            icon: const Icon(Icons.delete_outline_rounded),
-            tooltip: 'Delete',
-            onPressed: onDelete,
           ),
         ],
       ),
@@ -506,79 +318,43 @@ class _SavedAddressTile extends StatelessWidget {
   }
 }
 
-class _LocationTile extends StatelessWidget {
-  const _LocationTile({
-    required this.icon,
-    required this.label,
-    required this.address,
-    this.accuracy,
+class _ProfileSyncDetail extends StatelessWidget {
+  const _ProfileSyncDetail({required this.snapshot, required this.theme,
   });
 
-  final IconData icon;
-  final String label;
-  final String address;
-  final double? accuracy;
+  final ProfileLocationSnapshot snapshot;
+  final ThemeData theme;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Icon(icon, color: theme.colorScheme.primary, size: 20),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-              Text(address, style: theme.textTheme.bodyMedium),
-              if (accuracy != null)
-                Text(
-                  '±${accuracy!.toStringAsFixed(0)} m accuracy',
-                  style: theme.textTheme.labelSmall?.copyWith(
-                    color: theme.colorScheme.outline,
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
+    final parts = [
+      if (snapshot.city.isNotEmpty) snapshot.city,
+      if (snapshot.country.isNotEmpty) snapshot.country,
+    ];
+    final label = parts.join(', ');
 
-class _ErrorBanner extends StatelessWidget {
-  const _ErrorBanner({required this.message});
-  final String message;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
       decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
+        color: theme.colorScheme.tertiaryContainer.withOpacity(0.4),
         borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.colorScheme.tertiary.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           Icon(
-            Icons.error_outline_rounded,
-            size: 18,
-            color: theme.colorScheme.onErrorContainer,
+            Icons.person_pin_rounded,
+            size: 14,
+            color: theme.colorScheme.tertiary,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
-              message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
+              label.isNotEmpty
+                  ? 'Profile shows: $label'
+                  : 'Location synced to your profile',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: theme.colorScheme.onTertiaryContainer,
               ),
             ),
           ),
