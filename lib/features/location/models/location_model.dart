@@ -1,5 +1,30 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+class FriendLocationData {
+  const FriendLocationData({
+    required this.userId,
+    required this.username,
+    required this.fullName,
+    required this.role,
+    required this.profilePhoto,
+    required this.locationDoc,
+  });
+
+  final String userId;
+  final String username;
+  final String fullName;
+  final String role;
+  final String profilePhoto;
+  final UserLocationDoc? locationDoc;
+
+  List<UserAddressEntry> get visibleEntries =>
+      locationDoc?.visibleEntries ?? [];
+
+  bool get hasVisibleLocations => visibleEntries.isNotEmpty;
+
+  String get displayName => fullName.isNotEmpty ? fullName : '@$username';
+}
+
 class LatLng {
   const LatLng({required this.latitude, required this.longitude});
 

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_education_app/features/location/models/local_model.dart';
+import 'package:flutter_education_app/features/location/models/location_model.dart';
 import 'package:flutter_education_app/features/location/repositories/location_repository.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;

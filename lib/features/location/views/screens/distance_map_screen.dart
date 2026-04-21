@@ -3,8 +3,12 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/core/services/local/user_location_service.dart';
-import 'package:flutter_education_app/features/location/models/local_model.dart';
-import 'package:flutter_education_app/features/location/views/screens/friends_location_screen.dart';
+import 'package:flutter_education_app/features/location/models/location_model.dart';
+import 'package:flutter_education_app/features/location/views/widgets/category_toggle.dart';
+import 'package:flutter_education_app/features/location/views/widgets/distance_panel.dart';
+import 'package:flutter_education_app/features/location/views/widgets/map_button.dart';
+import 'package:flutter_education_app/features/location/views/widgets/plusing_marker.dart';
+import 'package:flutter_education_app/features/location/views/widgets/static_marker.dart';
 import 'package:flutter_map/flutter_map.dart'
     show
         CameraFit,
@@ -215,7 +219,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
           Positioned(
             top: topPad + 8,
             left: 16,
-            child: _MapButton(
+            child: MapButton(
               onTap: () => Navigator.of(context).pop(),
               child: const Icon(Icons.arrow_back_rounded),
             ),
@@ -226,14 +230,14 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
             child: Row(
               children: [
                 if (_availableCategories.length > 1)
-                  _CategoryToggle(
+                  CategoryToggle(
                     categories: _availableCategories,
                     selected: _selectedCategory ?? _availableCategories.first,
                     onSelected: _switchCategory,
                     theme: theme,
                   ),
                 const SizedBox(width: 8),
-                _MapButton(
+                MapButton(
                   onTap: _isRefreshing ? null : _refreshMyLocation,
                   child: _isRefreshing
                       ? const SizedBox(
@@ -250,7 +254,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
             bottom: 0,
             left: 0,
             right: 0,
-            child: _DistancePanel(
+            child: DistancePanel(
               friend: widget.targetFriend,
               theirEntry: _theirEntry,
               myEntry: _myBestEntry,
@@ -312,7 +316,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
                 point: myLL,
                 width: 72,
                 height: 80,
-                child: _PulsingMarker(
+                child: PulsingMarker(
                   animation: _pulseAnim,
                   color: theme.colorScheme.primary,
                   label: 'You',
@@ -326,7 +330,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
                 point: theirLL,
                 width: 72,
                 height: 80,
-                child: _StaticMarker(
+                child: StaticMarker(
                   color: theme.colorScheme.tertiary,
                   label: widget.targetFriend.displayName,
                   photoUrl: widget.targetFriend.profilePhoto,
@@ -340,533 +344,6 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
           ],
         ),
       ],
-    );
-  }
-}
-
-class _CategoryToggle extends StatelessWidget {
-  const _CategoryToggle({
-    required this.categories,
-    required this.selected,
-    required this.onSelected,
-    required this.theme,
-  });
-
-  final List<AddressCategory> categories;
-  final AddressCategory selected;
-  final void Function(AddressCategory) onSelected;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.12),
-            blurRadius: 8,
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: categories.map((cat) {
-          final isSelected = cat == selected;
-          return GestureDetector(
-            onTap: () => onSelected(cat),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: isSelected
-                    ? theme.colorScheme.primaryContainer
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    cat == AddressCategory.instructor
-                        ? Icons.school_rounded
-                        : Icons.person_rounded,
-                    size: 13,
-                    color: isSelected
-                        ? theme.colorScheme.onPrimaryContainer
-                        : theme.colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    cat.label,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: isSelected
-                          ? theme.colorScheme.onPrimaryContainer
-                          : theme.colorScheme.onSurfaceVariant,
-                      fontWeight: isSelected
-                          ? FontWeight.w700
-                          : FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _PulsingMarker extends StatelessWidget {
-  const _PulsingMarker({
-    required this.animation,
-    required this.color,
-    required this.label,
-    required this.photoUrl,
-    required this.fallbackIcon,
-    required this.theme,
-  });
-
-  final Animation<double> animation;
-  final Color color;
-  final String label;
-  final String photoUrl;
-  final IconData fallbackIcon;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (_, __) => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Container(
-                width: 52 * animation.value,
-                height: 52 * animation.value,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: color.withOpacity(0.2 * animation.value),
-                ),
-              ),
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: color, width: 2.5),
-                  boxShadow: [
-                    BoxShadow(
-                      color: color.withOpacity(0.45),
-                      blurRadius: 12,
-                      spreadRadius: 2,
-                    ),
-                  ],
-                ),
-                child: ClipOval(
-                  child: photoUrl.isNotEmpty
-                      ? Image.network(
-                          photoUrl,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, __, ___) => _fallback(color),
-                        )
-                      : _fallback(color),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 3),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-            decoration: BoxDecoration(
-              color: color,
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Text(
-              label,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onPrimary,
-                fontWeight: FontWeight.w800,
-                fontSize: 9,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _fallback(Color color) => Container(
-    color: color.withOpacity(0.15),
-    child: Icon(fallbackIcon, color: color, size: 22),
-  );
-}
-
-class _StaticMarker extends StatelessWidget {
-  const _StaticMarker({
-    required this.color,
-    required this.label,
-    required this.photoUrl,
-    required this.fallbackIcon,
-    required this.theme,
-  });
-
-  final Color color;
-  final String label;
-  final String photoUrl;
-  final IconData fallbackIcon;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: color, width: 2.5),
-            boxShadow: [
-              BoxShadow(
-                color: color.withOpacity(0.4),
-                blurRadius: 12,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: ClipOval(
-            child: photoUrl.isNotEmpty
-                ? Image.network(
-                    photoUrl,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => _fallback(),
-                  )
-                : _fallback(),
-          ),
-        ),
-        const SizedBox(height: 3),
-        Container(
-          constraints: const BoxConstraints(maxWidth: 72),
-          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-          child: Text(
-            label,
-            style: theme.textTheme.labelSmall?.copyWith(
-              color: theme.colorScheme.onTertiary,
-              fontWeight: FontWeight.w800,
-              fontSize: 9,
-            ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _fallback() => Container(
-    color: color.withOpacity(0.15),
-    child: Icon(fallbackIcon, color: color, size: 22),
-  );
-}
-
-class _DistancePanel extends StatelessWidget {
-  const _DistancePanel({
-    required this.friend,
-    required this.theirEntry,
-    required this.myEntry,
-    required this.distanceKm,
-    required this.theme,
-  });
-
-  final FriendLocationData friend;
-  final UserAddressEntry? theirEntry;
-  final UserAddressEntry? myEntry;
-  final double? distanceKm;
-  final ThemeData theme;
-
-  String _fmt(double km) {
-    if (km < 1.0) return '${(km * 1000).round()} m';
-    return '${km.toStringAsFixed(1)} km';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: theme.colorScheme.outlineVariant),
-        boxShadow: [
-          BoxShadow(
-            color: theme.colorScheme.shadow.withOpacity(0.2),
-            blurRadius: 24,
-            offset: const Offset(0, -4),
-          ),
-        ],
-      ),
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          20,
-          20,
-          20 + MediaQuery.of(context).padding.bottom,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 20,
-                  backgroundColor: theme.colorScheme.secondaryContainer,
-                  backgroundImage: friend.profilePhoto.isNotEmpty
-                      ? NetworkImage(friend.profilePhoto)
-                      : null,
-                  child: friend.profilePhoto.isEmpty
-                      ? Icon(
-                          friend.role == 'instructor'
-                              ? Icons.school_rounded
-                              : Icons.person_rounded,
-                          color: theme.colorScheme.onSecondaryContainer,
-                          size: 20,
-                        )
-                      : null,
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        friend.displayName,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                      if (theirEntry != null)
-                        Text(
-                          '${theirEntry!.title}  ·  ${theirEntry!.category.label}',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-                if (distanceKm != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          _fmt(distanceKm!),
-                          style: theme.textTheme.titleSmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        Text(
-                          'away',
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: theme.colorScheme.onPrimaryContainer
-                                .withOpacity(0.7),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 14),
-            Divider(color: theme.colorScheme.outlineVariant),
-            const SizedBox(height: 10),
-            if (myEntry != null)
-              _AddrRow(
-                icon: Icons.my_location_rounded,
-                label: 'Your location  ·  ${myEntry!.title}',
-                address: myEntry!.address.formattedAddress,
-                isPrimary: true,
-                theme: theme,
-              ),
-            if (myEntry != null && theirEntry != null)
-              const SizedBox(height: 8),
-            if (theirEntry != null)
-              _AddrRow(
-                icon: theirEntry!.category == AddressCategory.instructor
-                    ? Icons.school_rounded
-                    : Icons.person_rounded,
-                label: "${friend.username}'s ${theirEntry!.title}",
-                address: theirEntry!.address.formattedAddress,
-                isPrimary: false,
-                theme: theme,
-              ),
-            if (myEntry == null)
-              _WarnRow(
-                message: 'Your location not found. Tap refresh above.',
-                theme: theme,
-              ),
-            if (theirEntry == null)
-              _WarnRow(
-                message:
-                    '${friend.username} has no visible location for this category.',
-                theme: theme,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _AddrRow extends StatelessWidget {
-  const _AddrRow({
-    required this.icon,
-    required this.label,
-    required this.address,
-    required this.isPrimary,
-    required this.theme,
-  });
-
-  final IconData icon;
-  final String label;
-  final String address;
-  final bool isPrimary;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isPrimary
-        ? theme.colorScheme.primary
-        : theme.colorScheme.tertiary;
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: color.withOpacity(0.12),
-          ),
-          child: Icon(icon, color: color, size: 14),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: theme.textTheme.labelSmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Text(
-                address,
-                style: theme.textTheme.bodySmall,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _WarnRow extends StatelessWidget {
-  const _WarnRow({required this.message, required this.theme});
-
-  final String message;
-  final ThemeData theme;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.errorContainer,
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.warning_amber_rounded,
-            color: theme.colorScheme.onErrorContainer,
-            size: 14,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              message,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onErrorContainer,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MapButton extends StatelessWidget {
-  const _MapButton({required this.onTap, required this.child});
-
-  final VoidCallback? onTap;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: theme.colorScheme.surface,
-          shape: BoxShape.circle,
-          border: Border.all(color: theme.colorScheme.outlineVariant),
-          boxShadow: [
-            BoxShadow(
-              color: theme.colorScheme.shadow.withOpacity(0.1),
-              blurRadius: 8,
-            ),
-          ],
-        ),
-        child: IconTheme(
-          data: IconThemeData(color: theme.colorScheme.onSurface, size: 18),
-          child: child,
-        ),
-      ),
     );
   }
 }
