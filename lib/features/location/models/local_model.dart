@@ -44,12 +44,12 @@ class AddressComponents {
 
   factory AddressComponents.fromMap(Map<String, dynamic> map) =>
       AddressComponents(
-        street: map['street'] ?? '',
-        city: map['city'] ?? '',
-        state: map['state'] ?? '',
-        country: map['country'] ?? '',
-        postalCode: map['postal_code'] ?? '',
-        formattedAddress: map['formatted_address'] ?? '',
+        street: map['street'] as String? ?? '',
+        city: map['city'] as String? ?? '',
+        state: map['state'] as String? ?? '',
+        country: map['country'] as String? ?? '',
+        postalCode: map['postal_code'] as String? ?? '',
+        formattedAddress: map['formatted_address'] as String? ?? '',
       );
 
   Map<String, dynamic> toMap() => {
@@ -78,118 +78,190 @@ class AddressComponents {
   );
 }
 
-enum LocationType { currentLocation, customAddress }
+enum AddressCategory { instructor, student }
 
-extension LocationTypeExtension on LocationType {
+extension AddressCategoryX on AddressCategory {
   String get value => switch (this) {
-    LocationType.currentLocation => 'current_location',
-    LocationType.customAddress => 'custom_address',
+    AddressCategory.instructor => 'instructor',
+    AddressCategory.student => 'student',
   };
 
-  static LocationType fromString(String value) => switch (value) {
-    'current_location' => LocationType.currentLocation,
-    'custom_address' => LocationType.customAddress,
-    _ => LocationType.currentLocation,
+  String get label => switch (this) {
+    AddressCategory.instructor => 'Tutor',
+    AddressCategory.student => 'Student',
+  };
+
+  static AddressCategory fromString(String v) => switch (v) {
+    'instructor' => AddressCategory.instructor,
+    'student' => AddressCategory.student,
+    _ => AddressCategory.student,
   };
 }
 
-class LocationModel {
-  const LocationModel({
-    this.id,
-    required this.userId,
-    required this.role,
+enum AddressType { currentLocation, saved }
+
+extension AddressTypeX on AddressType {
+  String get value => switch (this) {
+    AddressType.currentLocation => 'current_location',
+    AddressType.saved => 'saved',
+  };
+
+  static AddressType fromString(String v) => switch (v) {
+    'current_location' => AddressType.currentLocation,
+    'saved' => AddressType.saved,
+    _ => AddressType.saved,
+  };
+}
+
+class UserAddressEntry {
+  const UserAddressEntry({
+    required this.entryId,
+    required this.title,
+    required this.category,
     required this.type,
     required this.coordinates,
     required this.address,
-    this.label,
-    this.isDefault = false,
+    required this.isVisible,
     required this.createdAt,
     required this.updatedAt,
     this.accuracy,
-    this.isVisible,
   });
 
-  final String? id;
-  final String userId;
-  final String role;
-  final LocationType type;
+  final String entryId;
+  final String title;
+  final AddressCategory category;
+  final AddressType type;
   final LatLng coordinates;
   final AddressComponents address;
-  final String? label;
-  final bool isDefault;
+  final bool isVisible;
   final DateTime createdAt;
   final DateTime updatedAt;
   final double? accuracy;
-  final bool? isVisible;
 
-  factory LocationModel.fromSnapshot(DocumentSnapshot doc) {
-    final map = doc.data() as Map<String, dynamic>;
-    return LocationModel._fromMap(map, id: doc.id);
-  }
+  factory UserAddressEntry.fromMap(String id, Map<String, dynamic> map) {
+    final coordRaw = map['coordinates'];
+    final LatLng coords;
+    if (coordRaw is GeoPoint) {
+      coords = LatLng.fromGeoPoint(coordRaw);
+    } else if (coordRaw is Map<String, dynamic>) {
+      coords = LatLng.fromMap(coordRaw);
+    } else {
+      coords = const LatLng(latitude: 0, longitude: 0);
+    }
 
-  factory LocationModel._fromMap(Map<String, dynamic> map, {String? id}) {
-    final geoPoint = map['coordinates'] as GeoPoint?;
-    final coords = geoPoint != null
-        ? LatLng.fromGeoPoint(geoPoint)
-        : LatLng.fromMap((map['coordinates'] as Map<String, dynamic>?) ?? {});
-
-    return LocationModel(
-      id: id,
-      userId: map['user_id'] ?? '',
-      role: map['role'] ?? 'student',
-      type: LocationTypeExtension.fromString(map['type'] ?? ''),
+    return UserAddressEntry(
+      entryId: id,
+      title: map['title'] as String? ?? '',
+      category: AddressCategoryX.fromString(map['category'] as String? ?? ''),
+      type: AddressTypeX.fromString(map['type'] as String? ?? ''),
       coordinates: coords,
       address: AddressComponents.fromMap(
         (map['address'] as Map<String, dynamic>?) ?? {},
       ),
-      label: map['label'] as String?,
-      isDefault: map['is_default'] as bool? ?? false,
+      isVisible: map['is_visible'] as bool? ?? false,
       createdAt: (map['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt: (map['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       accuracy: (map['accuracy'] as num?)?.toDouble(),
-      isVisible: map['is_visible'] as bool?,
     );
   }
 
   Map<String, dynamic> toMap() => {
-    'user_id': userId,
-    'role': role,
+    'title': title,
+    'category': category.value,
     'type': type.value,
     'coordinates': coordinates.toGeoPoint(),
     'address': address.toMap(),
-    if (label != null) 'label': label,
-    'is_default': isDefault,
+    'is_visible': isVisible,
     'created_at': Timestamp.fromDate(createdAt),
     'updated_at': Timestamp.fromDate(updatedAt),
     if (accuracy != null) 'accuracy': accuracy,
-    if (isVisible != null) 'is_visible': isVisible,
   };
 
-  LocationModel copyWith({
-    String? id,
-    String? userId,
-    String? role,
-    LocationType? type,
+  UserAddressEntry copyWith({
+    String? entryId,
+    String? title,
+    AddressCategory? category,
+    AddressType? type,
     LatLng? coordinates,
     AddressComponents? address,
-    String? label,
-    bool? isDefault,
+    bool? isVisible,
     DateTime? createdAt,
     DateTime? updatedAt,
     double? accuracy,
-    bool? isVisible,
-  }) => LocationModel(
-    id: id ?? this.id,
-    userId: userId ?? this.userId,
-    role: role ?? this.role,
+  }) => UserAddressEntry(
+    entryId: entryId ?? this.entryId,
+    title: title ?? this.title,
+    category: category ?? this.category,
     type: type ?? this.type,
     coordinates: coordinates ?? this.coordinates,
     address: address ?? this.address,
-    label: label ?? this.label,
-    isDefault: isDefault ?? this.isDefault,
+    isVisible: isVisible ?? this.isVisible,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     accuracy: accuracy ?? this.accuracy,
-    isVisible: isVisible ?? this.isVisible,
   );
+}
+
+class UserLocationDoc {
+  const UserLocationDoc({
+    required this.userId,
+    required this.entries,
+    required this.updatedAt,
+  });
+
+  final String userId;
+  final List<UserAddressEntry> entries;
+  final DateTime updatedAt;
+
+  factory UserLocationDoc.empty(String userId) => UserLocationDoc(
+    userId: userId,
+    entries: const [],
+    updatedAt: DateTime.now(),
+  );
+
+  factory UserLocationDoc.fromSnapshot(DocumentSnapshot doc) {
+    final map = doc.data() as Map<String, dynamic>? ?? {};
+    final rawEntries = map['entries'] as Map<String, dynamic>? ?? {};
+    final entries = rawEntries.entries
+        .map((e) => UserAddressEntry.fromMap(e.key, e.value as Map<String, dynamic>))
+        .toList()
+      ..sort((a, b) {
+        if (a.type == AddressType.currentLocation) return -1;
+        if (b.type == AddressType.currentLocation) return 1;
+        return b.updatedAt.compareTo(a.updatedAt);
+      });
+
+    return UserLocationDoc(
+      userId: doc.id,
+      entries: entries,
+      updatedAt: (map['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+    );
+  }
+
+  Map<String, dynamic> toFirestoreEntriesMap() {
+    final map = <String, dynamic>{};
+    for (final e in entries) {
+      map[e.entryId] = e.toMap();
+    }
+    return map;
+  }
+
+  List<UserAddressEntry> get visibleEntries =>
+      entries.where((e) => e.isVisible).toList();
+
+  List<UserAddressEntry> visibleForCategory(AddressCategory cat) =>
+      entries.where((e) => e.isVisible && e.category == cat).toList();
+
+  UserAddressEntry? get currentLocation => entries.firstWhereOrNull(
+    (e) => e.type == AddressType.currentLocation,
+  );
+}
+
+extension _FirstOrNull<T> on List<T> {
+  T? firstWhereOrNull(bool Function(T) test) {
+    for (final e in this) {
+      if (test(e)) return e;
+    }
+    return null;
+  }
 }

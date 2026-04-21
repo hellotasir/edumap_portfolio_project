@@ -24,7 +24,7 @@ The system follows a **progressive interaction model**:
 | ------------- | ---------------------------------------------------------- |
 | Supabase      | Storage for storing objects, Authentication for user identity and Database for keep payments history |
 | Firebase      | Database for keep user activities in the app |
-| Google Cloud  | Linked with Firebase and Supabase |
+| Google Cloud  | Linked with Gemini, Firebase and Supabase |
 | OpenStreetMap | Geolocation and map services |
 | ZEGO CLOUD    | For voice and video call |
 | Stripe | For subscription payment getway |

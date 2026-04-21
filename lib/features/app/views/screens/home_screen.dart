@@ -3,21 +3,18 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/core/services/cloud/profile_location_service.dart';
+import 'package:flutter_education_app/core/services/local/user_location_service.dart';
 import 'package:flutter_education_app/core/widgets/loading_widget.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_profile_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_profile_avatar.dart';
 import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
-import 'package:flutter_education_app/features/location/repositories/profile_location_repository.dart';
-import 'package:flutter_education_app/features/location/views/view_models/profile_location_adapter.dart';
-import 'package:flutter_education_app/features/location/views/widgets/location_widget.dart';
+import 'package:flutter_education_app/features/location/views/screens/my_location_screen.dart';
 import 'package:flutter_education_app/features/profile/models/profile_model.dart';
 import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
 import 'package:flutter_education_app/core/consts/app_details.dart';
 import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
 import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
-import 'package:flutter_education_app/core/services/cloud/location_service.dart';
 import 'package:flutter_education_app/features/chat/views/widgets/inbox_widget.dart';
 import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
 
@@ -57,12 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   final _profileRepository = ProfileRepository();
   final _authRepository = AuthRepository();
   final _chatRepository = ChatRepository();
-  late final _locationService = LocationService();
-  late final _profileLocationRepository = ProfileLocationRepository();
-  late final _profileLocationService = ProfileLocationService(
-    locationService: _locationService,
-    profileLocationRepository: _profileLocationRepository,
-  );
+  late final _locationService = UserLocationService();
 
   Stream<ProfileModel?>? _profileStream;
   StreamSubscription<ProfileModel?>? _profileSub;
@@ -89,13 +81,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       setState(() => _profileError = 'User is not authenticated.');
       return;
     }
-
     final collectionPath = _profileRepository.collectionPath.firstOrNull;
     if (collectionPath == null || collectionPath.isEmpty) {
       setState(() => _profileError = 'Invalid collection path.');
       return;
     }
-
     _profileStream = FirebaseFirestore.instance
         .collection(collectionPath)
         .where('user_id', isEqualTo: userId)
@@ -105,7 +95,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           if (snapshot.docs.isEmpty) return null;
           return _profileRepository.fromSnapshot(snapshot.docs.first);
         });
-
     _profileSub = _profileStream!.listen(
       (profile) {
         if (!mounted) return;
@@ -129,14 +118,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         currentProfilePhoto: profile.profile.profilePhoto,
         chatRepository: _chatRepository,
       ),
-      _HomeTab.location => LocationWidget(
+      _HomeTab.location => MyLocationScreen(
         userId: profile.userId,
-        role: profile.currentMode,
-        profileLocationService: _profileLocationService,
-        locationService: ProfileLocationAdapter(
-          profileLocationService: _profileLocationService,
-          locationService: _locationService,
-        ),
+        locationService: _locationService,
       ),
     };
   }
@@ -247,7 +231,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     required ColorScheme colorScheme,
   }) {
     if (isFirstLoad) return const Center(child: LoadingIndicator());
-
     if (hasError) {
       return HomeErrorState(
         key: const ValueKey('error'),
@@ -262,11 +245,9 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         },
       );
     }
-
     if (profile == null) {
       return const HomeEmptyProfileState(key: ValueKey('empty'));
     }
-
     return KeyedSubtree(
       key: ValueKey(_currentTab),
       child: _buildPage(_currentTab, profile),
