@@ -83,7 +83,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       passwordHash: '',
       currentMode: 'student',
       availableModes: const ['student'],
-      isVerified: user.emailConfirmedAt != null,
+      isVerified: false,
       status: 'active',
       createdAt: now,
       updatedAt: now,

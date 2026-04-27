@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_education_app/core/consts/api_keys.dart';
 import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
 import 'package:flutter_education_app/features/subscription/models/subscription_model.dart';
 import 'package:flutter_education_app/features/subscription/models/subscription_plan.dart';
@@ -48,8 +48,7 @@ class PaymentRepository {
     required String currency,
   }) async {
     try {
-      final supabaseUrl = dotenv.env['SUPABASE_URL']!;
-      final anonKey = dotenv.env['SUPABASE_ANON_KEY']!;
+      final anonKey = supabaseAnonKey;
       final accessToken = _supabase.auth.currentSession?.accessToken;
 
       final response = await http.post(

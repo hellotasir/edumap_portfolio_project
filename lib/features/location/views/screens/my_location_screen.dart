@@ -86,8 +86,9 @@ class _MyLocationScreenState extends State<MyLocationScreen> {
             );
             if (mounted) _snack('Address saved');
           } on GeocodingException catch (e) {
-            if (mounted)
+            if (mounted) {
               _snack('Could not find address: ${e.message}', isError: true);
+            }
           } catch (e) {
             if (mounted) _snack(e.toString(), isError: true);
           }
@@ -188,7 +189,7 @@ class _MyLocationScreenState extends State<MyLocationScreen> {
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
               sliver: SliverList.separated(
                 itemCount: entries.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
                 itemBuilder: (_, i) => AddressCard(
                   entry: entries[i],
                   theme: theme,

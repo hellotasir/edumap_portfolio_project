@@ -212,7 +212,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context, false),
+            onPressed: () {
+              Navigator.pop(context);
+            },
             child: const Text('Keep editing'),
           ),
           FilledButton(

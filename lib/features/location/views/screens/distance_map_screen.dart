@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/core/consts/api_keys.dart';
 import 'package:flutter_education_app/core/services/local/user_location_service.dart';
 import 'package:flutter_education_app/features/location/models/location_model.dart';
 import 'package:flutter_education_app/features/location/views/widgets/category_toggle.dart';
@@ -295,9 +295,9 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
       children: [
         TileLayer(
           urlTemplate:
-              'https://cartodb-basemaps-{s}.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png',
+              urlTemplate,
           subdomains: const ['a', 'b', 'c', 'd'],
-          userAgentPackageName: 'com.edumap.app',
+          userAgentPackageName: 'com.example.flutter_education_app',
         ),
         if (myLL != null && theirLL != null)
           PolylineLayer(

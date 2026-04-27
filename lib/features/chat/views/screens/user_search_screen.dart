@@ -273,10 +273,15 @@ class _UserResultTile extends StatefulWidget {
 
 class _UserResultTileState extends State<_UserResultTile> {
   _FriendStatus _status = _FriendStatus.none;
+  String? _blockedRequestId;
   bool _loading = true;
+  bool _actionLoading = false;
 
   String get _otherUserId =>
       widget.user['user_id'] as String? ?? widget.user['id'] as String? ?? '';
+
+  String get _otherUsername =>
+      widget.user['username'] as String? ?? 'this user';
 
   @override
   void initState() {
@@ -291,15 +296,25 @@ class _UserResultTileState extends State<_UserResultTile> {
         widget.currentUserId,
         _otherUserId,
       ),
+      widget.chatRepository.getBlockedRequest(
+        widget.currentUserId,
+        _otherUserId,
+      ),
     ]);
 
     final isFriend = results[0] as bool;
     final request = results[1] as FriendRequestModel?;
+    final blockedRequest = results[2] as FriendRequestModel?;
 
     if (!mounted) return;
 
     _FriendStatus status;
-    if (isFriend) {
+    String? blockedRequestId;
+
+    if (blockedRequest != null) {
+      status = _FriendStatus.blocked;
+      blockedRequestId = blockedRequest.id;
+    } else if (isFriend) {
       status = _FriendStatus.friends;
     } else if (request != null &&
         request.status == FriendRequestStatus.pending) {
@@ -314,19 +329,21 @@ class _UserResultTileState extends State<_UserResultTile> {
 
     setState(() {
       _status = status;
+      _blockedRequestId = blockedRequestId;
       _loading = false;
     });
   }
 
   Future<void> _sendRequest() async {
-    final username = widget.user['username'] as String? ?? '';
+    if (_actionLoading) return;
+    setState(() => _actionLoading = true);
     try {
       await widget.chatRepository.sendFriendRequest(
         fromUserId: widget.currentUserId,
         fromUsername: widget.currentUsername,
         fromProfilePhoto: widget.currentProfilePhoto,
         toUserId: _otherUserId,
-        toUsername: username,
+        toUsername: _otherUsername,
       );
       if (mounted) setState(() => _status = _FriendStatus.requestSent);
     } on DuplicateFriendRequestException catch (e) {
@@ -341,6 +358,59 @@ class _UserResultTileState extends State<_UserResultTile> {
         ),
       );
       await _checkFriendStatus();
+    } finally {
+      if (mounted) setState(() => _actionLoading = false);
+    }
+  }
+
+  Future<void> _unblock() async {
+    if (_actionLoading) return;
+    final cs = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Unblock $_otherUsername?'),
+        content: Text(
+          '$_otherUsername will be able to send you friend requests and '
+          'messages again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: cs.primary),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Unblock'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _actionLoading = true);
+    try {
+      if (_blockedRequestId != null) {
+        await widget.chatRepository.unblockUser(_blockedRequestId!);
+      }
+      if (mounted) {
+        setState(() {
+          _status = _FriendStatus.none;
+          _blockedRequestId = null;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$_otherUsername has been unblocked.'),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _actionLoading = false);
     }
   }
 
@@ -354,7 +424,9 @@ class _UserResultTileState extends State<_UserResultTile> {
     final photoUrl = widget.user['profile_photo'] as String? ?? '';
 
     return InkWell(
-      onTap: widget.onTap,
+      onTap: _actionLoading
+          ? null
+          : (_status == _FriendStatus.blocked ? _unblock : widget.onTap),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
         child: Row(
@@ -424,6 +496,14 @@ class _UserResultTileState extends State<_UserResultTile> {
   }
 
   Widget _buildTrailingAction(ColorScheme colorScheme, TextTheme textTheme) {
+    if (_actionLoading) {
+      return const SizedBox(
+        width: 20,
+        height: 20,
+        child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+      );
+    }
+
     switch (_status) {
       case _FriendStatus.friends:
         return _StatusChip(
@@ -446,6 +526,35 @@ class _UserResultTileState extends State<_UserResultTile> {
           textTheme: textTheme,
           isMuted: false,
         );
+      case _FriendStatus.blocked:
+        return GestureDetector(
+          onTap: _unblock,
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: colorScheme.errorContainer,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.block_rounded,
+                  size: 13,
+                  color: colorScheme.onErrorContainer,
+                ),
+                const SizedBox(width: 4),
+                Text(
+                  'Blocked',
+                  style: textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: colorScheme.onErrorContainer,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
       case _FriendStatus.none:
         return FilledButton(
           onPressed: _sendRequest,
@@ -463,7 +572,7 @@ class _UserResultTileState extends State<_UserResultTile> {
   }
 }
 
-enum _FriendStatus { none, requestSent, requestReceived, friends }
+enum _FriendStatus { none, requestSent, requestReceived, friends, blocked }
 
 class _StatusChip extends StatelessWidget {
   const _StatusChip({

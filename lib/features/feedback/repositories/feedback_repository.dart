@@ -5,7 +5,7 @@ import 'package:flutter_education_app/features/app/repositories/database_reposit
 class FeedbackRepository implements DatabaseRepository<FeedbackModel> {
   const FeedbackRepository();
 
-  static const _userId = 'userId';
+  static const _userId = 'user_id';
   static const _userName = 'userName';
   static const _category = 'category';
   static const _rating = 'rating';
@@ -36,7 +36,7 @@ class FeedbackRepository implements DatabaseRepository<FeedbackModel> {
 
     return FeedbackModel(
       id: snapshot.id,
-      userId: (data[_userId] as String?)?.trim() ?? '',
+      user_id: (data[_userId] as String?)?.trim() ?? '',
       userName:
           (data[_userName] as String?)?.trim().isNotEmpty == true
               ? (data[_userName] as String).trim()
@@ -54,7 +54,7 @@ class FeedbackRepository implements DatabaseRepository<FeedbackModel> {
 
   @override
   Map<String, dynamic> toMap(FeedbackModel model) => {
-        _userId: model.userId,
+        _userId: model.user_id,
         _userName: model.userName,
         _category: model.category,
         _rating: model.rating,

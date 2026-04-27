@@ -1,7 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_education_app/core/consts/api_keys.dart';
 import 'package:flutter_education_app/features/auth/views/screens/auth_screen.dart';
 import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
 import 'package:flutter_education_app/features/auth/views/widgets/google_logo.dart';
@@ -90,7 +90,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   }
 
   Future<void> _nativeGoogleSignIn() async {
-    final webClientId = dotenv.env['SUPABASE_GOOGLE_CLIENT_ID_WEB'];
+    final webClientId = supabaseGoogleClientIdWeb;
     const scopes = ['email', 'profile'];
     final googleSignIn = GoogleSignIn.instance;
 

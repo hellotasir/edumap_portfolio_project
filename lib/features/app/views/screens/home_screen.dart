@@ -1,24 +1,27 @@
 import 'dart:async';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_education_app/features/ai/views/screens/ai_assistant_screen.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:flutter_education_app/core/consts/app_details.dart';
 import 'package:flutter_education_app/core/services/local/user_location_service.dart';
 import 'package:flutter_education_app/core/widgets/loading_widget.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_profile_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_empty_state.dart';
 import 'package:flutter_education_app/features/app/views/widgets/home_profile_avatar.dart';
 import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
+import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
+import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
+import 'package:flutter_education_app/features/chat/views/widgets/inbox_widget.dart';
 import 'package:flutter_education_app/features/location/views/screens/my_location_screen.dart';
 import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/core/consts/app_details.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
 import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/inbox_widget.dart';
 import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
 
 enum _HomeTab {
+ 
   inbox(
     label: 'Inbox',
     icon: Icons.chat_bubble_outline_rounded,
@@ -28,6 +31,11 @@ enum _HomeTab {
     label: 'Location',
     icon: Icons.location_on_outlined,
     selectedIcon: Icons.location_on_rounded,
+  ),
+  ai(
+    label: 'AI',
+    icon: Icons.auto_awesome_outlined,
+    selectedIcon: Icons.auto_awesome_rounded,
   );
 
   const _HomeTab({
@@ -41,14 +49,15 @@ enum _HomeTab {
   final IconData selectedIcon;
 }
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
+class _HomeScreenState extends ConsumerState<HomeScreen>
+    with WidgetsBindingObserver {
   _HomeTab _currentTab = _HomeTab.inbox;
 
   final _profileRepository = ProfileRepository();
@@ -121,6 +130,13 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       _HomeTab.location => MyLocationScreen(
         userId: profile.userId,
         locationService: _locationService,
+      ),
+      _HomeTab.ai => AiAssistantScreen(
+        userId: profile.userId,
+        username: profile.username,
+        profilePhoto: profile.profile.profilePhoto.isNotEmpty
+            ? profile.profile.profilePhoto
+            : null,
       ),
     };
   }

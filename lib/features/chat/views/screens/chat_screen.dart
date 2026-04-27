@@ -1,4 +1,4 @@
-// ignore_for_file: unused_field
+// ignore_for_file: prefer_final_fields
 
 import 'dart:async';
 import 'dart:io';
@@ -52,7 +52,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final _recorder = AudioRecorder();
 
   String? _otherUserPhoto;
-  bool _isProfileLoading = true;
+  bool? _otherUserExists;
   bool _isFriend = false;
   bool _isFriendLoaded = false;
   final bool _friendRequestSent = false;
@@ -64,6 +64,8 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isRecording = false;
   bool _isAttachMenuOpen = false;
   bool _hasText = false;
+  bool _isBanned = false;
+  bool _isDeletingConversation = false;
 
   final Set<String> _downloadingFiles = {};
 
@@ -85,6 +87,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   int get _remaining => (3 - _myMessageCount).clamp(0, 3);
 
+  bool get _inputDisabled =>
+      _isBanned || _limitReached || _otherUserExists == false;
+
   @override
   void initState() {
     super.initState();
@@ -99,6 +104,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _loadFriendStatus();
     _markRead();
     _listenTyping();
+    _checkBanStatus();
     if (!_isGroup) _loadOtherUserProfile();
   }
 
@@ -112,6 +118,13 @@ class _ChatScreenState extends State<ChatScreen> {
     widget.chatRepository.disposeTypingChannel();
     _recorder.dispose();
     super.dispose();
+  }
+
+  Future<void> _checkBanStatus() async {
+    final banned = await widget.chatRepository.isUserBanned(
+      widget.currentUserId,
+    );
+    if (mounted) setState(() => _isBanned = banned);
   }
 
   Future<void> _loadFriendStatus() async {
@@ -145,15 +158,18 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _loadOtherUserProfile() async {
     try {
-      final profile = await widget.chatRepository.getUserProfile(_otherUserId);
+      final exists = await widget.chatRepository.checkUserExists(_otherUserId);
+      final profile = exists
+          ? await widget.chatRepository.getUserProfile(_otherUserId)
+          : null;
       if (mounted) {
         setState(() {
+          _otherUserExists = exists;
           _otherUserPhoto = profile?['profile_photo'] as String?;
-          _isProfileLoading = false;
         });
       }
     } catch (_) {
-      if (mounted) setState(() => _isProfileLoading = false);
+      if (mounted) setState(() => _otherUserExists = true);
     }
   }
 
@@ -185,8 +201,26 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _sendMessage() async {
+    if (_isBanned) {
+      _showBanDialog();
+      return;
+    }
+
     final text = _controller.text.trim();
     if (text.isEmpty || _isSending) return;
+
+    if (ToxicityFilter.isToxic(text)) {
+      final banned = await widget.chatRepository.recordToxicityStrike(
+        widget.currentUserId,
+      );
+      if (banned) {
+        if (mounted) setState(() => _isBanned = true);
+        _showBanDialog();
+      } else {
+        _showToxicityWarning();
+      }
+      return;
+    }
 
     if (widget.chatRepository.isConversationBusy(_conversation.id!)) {
       _showSnack('Please wait for the previous message to send.');
@@ -206,6 +240,11 @@ class _ChatScreenState extends State<ChatScreen> {
         isFriend: _isFriend,
       );
       _scrollToBottom();
+    } on ToxicityException catch (e) {
+      if (e.banned && mounted) {
+        setState(() => _isBanned = true);
+        _showBanDialog();
+      }
     } on MessageLimitException catch (e) {
       _showSnack(e.message);
     } on BusyException catch (e) {
@@ -216,6 +255,63 @@ class _ChatScreenState extends State<ChatScreen> {
       if (mounted) setState(() => _isSending = false);
     }
   }
+
+  void _showToxicityWarning() {
+    final cs = Theme.of(context).colorScheme;
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: cs.error, size: 22),
+            const SizedBox(width: 8),
+            const Text('Inappropriate Message'),
+          ],
+        ),
+        content: const Text(
+          'Your message contains inappropriate or toxic content. Please keep conversations respectful. '
+          'Your account will be permanently banned after 3 violations.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showBanDialog() {
+    final cs = Theme.of(context).colorScheme;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Row(
+          children: [
+            Icon(Icons.block_rounded, color: cs.error, size: 22),
+            const SizedBox(width: 8),
+            const Text('Account Banned'),
+          ],
+        ),
+        content: const Text(
+          'Your account has been banned due to toxic behavior. '
+          'You can no longer send messages. Please contact support if you believe this is a mistake.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+
 
   Future<void> _pickAndSendImage({
     ImageSource source = ImageSource.gallery,
@@ -303,8 +399,16 @@ class _ChatScreenState extends State<ChatScreen> {
     String? fileName,
     int? fileSize,
   }) async {
+    if (_isBanned) {
+      _showBanDialog();
+      return;
+    }
     if (_limitReached) {
       _showSnack('Message limit reached');
+      return;
+    }
+    if (_otherUserExists == false) {
+      _showSnack('This user no longer exists');
       return;
     }
     if (widget.chatRepository.isConversationBusy(_conversation.id!)) {
@@ -409,7 +513,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-
   Future<void> _confirmDelete(ChatMessageModel msg) async {
     final cs = Theme.of(context).colorScheme;
     final confirmed = await showDialog<bool>(
@@ -486,7 +589,14 @@ class _ChatScreenState extends State<ChatScreen> {
             appBar: _buildAppBar(context, cs, tt),
             body: Column(
               children: [
-                if (!_isFriend && _isFriendLoaded && !_isGroup)
+                if (_isBanned) RepaintBoundary(child: _buildBanBanner(cs, tt)),
+                if (!_isBanned && !_isGroup && _otherUserExists == false)
+                  RepaintBoundary(child: _buildDeletedUserBanner(cs, tt)),
+                if (!_isBanned &&
+                    _otherUserExists != false &&
+                    !_isFriend &&
+                    _isFriendLoaded &&
+                    !_isGroup)
                   RepaintBoundary(child: _buildNonFriendBanner(cs, tt)),
                 Expanded(
                   child: StreamBuilder<List<ChatMessageModel>>(
@@ -530,7 +640,6 @@ class _ChatScreenState extends State<ChatScreen> {
                           vertical: 16,
                         ),
                         itemCount: messages.length,
-                        // addAutomaticKeepAlives off for perf on large lists
                         addAutomaticKeepAlives: false,
                         addRepaintBoundaries: true,
                         itemBuilder: (context, i) {
@@ -570,9 +679,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 ),
                 if (_typingUser != null)
                   RepaintBoundary(child: _buildTypingIndicator(cs, tt)),
-                if (!_isFriend && _isFriendLoaded && !_isGroup)
+                if (!_isBanned &&
+                    _otherUserExists != false &&
+                    !_isFriend &&
+                    _isFriendLoaded &&
+                    !_isGroup)
                   RepaintBoundary(child: _buildLimitBar(cs, tt)),
-                if (_isAttachMenuOpen)
+                if (_isAttachMenuOpen && !_inputDisabled)
                   RepaintBoundary(child: _buildAttachMenu(cs, tt)),
                 RepaintBoundary(child: _buildInputBar(context, cs, tt)),
               ],
@@ -605,32 +718,34 @@ class _ChatScreenState extends State<ChatScreen> {
             : _buildIndividualTitle(cs, tt),
       ),
       actions: [
-        IconButton(
-          onPressed: () {
-            AppNavigator(
-              screen: CallScreen(
-                userID: _otherUserId,
-                userName: _otherUsername,
-                callID: _otherUserId,
-                isVideoCall: false,
-              ),
-            ).navigate(context);
-          },
-          icon: Icon(Icons.call_rounded, size: 20, color: cs.onSurface),
-        ),
-        IconButton(
-          onPressed: () {
-            AppNavigator(
-              screen: CallScreen(
-                userID: _otherUserId,
-                userName: _otherUsername,
-                callID: _otherUserId,
-                isVideoCall: true,
-              ),
-            ).navigate(context);
-          },
-          icon: Icon(Icons.video_call_rounded, size: 20, color: cs.onSurface),
-        ),
+        if (!_isGroup && _otherUserExists != false) ...[
+          IconButton(
+            onPressed: () {
+              AppNavigator(
+                screen: CallScreen(
+                  userID: _otherUserId,
+                  userName: _otherUsername,
+                  callID: _otherUserId,
+                  isVideoCall: false,
+                ),
+              ).navigate(context);
+            },
+            icon: Icon(Icons.call_rounded, size: 20, color: cs.onSurface),
+          ),
+          IconButton(
+            onPressed: () {
+              AppNavigator(
+                screen: CallScreen(
+                  userID: _otherUserId,
+                  userName: _otherUsername,
+                  callID: _otherUserId,
+                  isVideoCall: true,
+                ),
+              ).navigate(context);
+            },
+            icon: Icon(Icons.video_call_rounded, size: 20, color: cs.onSurface),
+          ),
+        ],
         _AppBarIconButton(
           icon: Icons.tune_rounded,
           onTap: () => Navigator.push(
@@ -653,6 +768,42 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget _buildIndividualTitle(ColorScheme cs, TextTheme tt) {
+    if (_otherUserExists == false) {
+      return Row(
+        children: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: cs.errorContainer,
+            child: Icon(
+              Icons.person_off_rounded,
+              size: 18,
+              color: cs.onErrorContainer,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _otherUsername,
+                style: tt.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: cs.onSurface.withOpacity(0.5),
+                ),
+              ),
+              Text(
+                'Account deleted',
+                style: tt.labelSmall?.copyWith(
+                  color: cs.error.withOpacity(0.7),
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
     return StreamBuilder<UserPresenceModel>(
       stream: widget.chatRepository.watchPresence(_otherUserId),
       builder: (context, snap) {
@@ -762,6 +913,92 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Widget _buildBanBanner(ColorScheme cs, TextTheme tt) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: cs.errorContainer,
+      child: Row(
+        children: [
+          Icon(Icons.block_rounded, size: 16, color: cs.onErrorContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              'Your account has been banned for toxic behavior. Messaging is disabled.',
+              style: tt.bodySmall?.copyWith(
+                color: cs.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDeletedUserBanner(ColorScheme cs, TextTheme tt) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      color: cs.errorContainer.withOpacity(0.7),
+      child: Row(
+        children: [
+          Icon(Icons.person_off_rounded, size: 16, color: cs.onErrorContainer),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              '${_otherUsername}\'s account no longer exists on this platform.',
+              style: tt.bodySmall?.copyWith(
+                color: cs.onErrorContainer,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          _isDeletingConversation
+              ? SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: cs.onErrorContainer,
+                  ),
+                )
+              : GestureDetector(
+                  onTap: () {
+                    AppNavigator(
+                      screen: ChatSettingsScreen(
+                        conversation: _conversation,
+                        currentUserId: widget.currentUserId,
+                        currentUsername: widget.currentUsername,
+                        currentProfilePhoto: widget.currentProfilePhoto,
+                        chatRepository: widget.chatRepository,
+                      ),
+                    ).navigate(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: cs.error,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      'Delete Chat',
+                      style: tt.labelSmall?.copyWith(
+                        color: cs.onError,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildAttachMenu(ColorScheme cs, TextTheme tt) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return AnimatedContainer(
@@ -827,6 +1064,17 @@ class _ChatScreenState extends State<ChatScreen> {
         ? cs.surfaceContainerHighest
         : Colors.grey.shade200;
 
+    String hintText;
+    if (_isBanned) {
+      hintText = 'Account banned — messaging disabled';
+    } else if (_otherUserExists == false) {
+      hintText = 'This user no longer exists';
+    } else if (_limitReached) {
+      hintText = 'Limit reached — waiting for acceptance';
+    } else {
+      hintText = 'Message';
+    }
+
     return SafeArea(
       top: false,
       child: Container(
@@ -845,10 +1093,12 @@ class _ChatScreenState extends State<ChatScreen> {
           children: [
             _CircleIconButton(
               icon: _isAttachMenuOpen ? Icons.close_rounded : Icons.add_rounded,
-              onTap: () =>
-                  setState(() => _isAttachMenuOpen = !_isAttachMenuOpen),
+              onTap: _inputDisabled
+                  ? (_isBanned ? _showBanDialog : () {})
+                  : () =>
+                        setState(() => _isAttachMenuOpen = !_isAttachMenuOpen),
               backgroundColor: fieldColor,
-              iconColor: cs.onSurface.withOpacity(0.6),
+              iconColor: cs.onSurface.withOpacity(_inputDisabled ? 0.3 : 0.6),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -867,16 +1117,14 @@ class _ChatScreenState extends State<ChatScreen> {
                     : TextField(
                         controller: _controller,
                         focusNode: _focusNode,
-                        enabled: !_limitReached,
+                        enabled: !_inputDisabled,
                         onChanged: _onTextChanged,
                         maxLines: 5,
                         minLines: 1,
                         textCapitalization: TextCapitalization.sentences,
                         style: tt.bodyMedium,
                         decoration: InputDecoration(
-                          hintText: _limitReached
-                              ? 'Limit reached — waiting for acceptance'
-                              : 'Message',
+                          hintText: hintText,
                           hintStyle: tt.bodyMedium?.copyWith(
                             color: cs.onSurface.withOpacity(0.35),
                           ),
@@ -933,11 +1181,14 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildSendOrMicButton(ColorScheme cs, Color fieldColor) {
     if (_hasText || _isSending) {
       return GestureDetector(
-        onTap: (_limitReached || _isSending) ? null : _sendMessage,
+        onTap: (_inputDisabled || _isSending) ? null : _sendMessage,
         child: Container(
           width: 46,
           height: 46,
-          decoration: BoxDecoration(color: cs.primary, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: _inputDisabled ? cs.outline : cs.primary,
+            shape: BoxShape.circle,
+          ),
           child: _isSending
               ? Padding(
                   padding: const EdgeInsets.all(13),
@@ -968,9 +1219,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
     return _CircleIconButton(
       icon: Icons.mic_rounded,
-      onTap: _startRecording,
+      onTap: _inputDisabled
+          ? (_isBanned ? _showBanDialog : () {})
+          : _startRecording,
       backgroundColor: fieldColor,
-      iconColor: cs.onSurface.withOpacity(0.55),
+      iconColor: cs.onSurface.withOpacity(_inputDisabled ? 0.3 : 0.55),
       size: 46,
     );
   }
@@ -1013,7 +1266,6 @@ class _ChatScreenState extends State<ChatScreen> {
               ),
             ),
           ),
-        
         ],
       ),
     );
@@ -1108,10 +1360,6 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
-
-// ---------------------------------------------------------------------------
-// Chat bubble extracted as StatelessWidget so ListView can skip rebuilds
-// ---------------------------------------------------------------------------
 
 class _ChatBubble extends StatelessWidget {
   const _ChatBubble({
@@ -1473,10 +1721,6 @@ class _FileMessageContent extends StatelessWidget {
   }
 }
 
-// ---------------------------------------------------------------------------
-// Status icon – const-friendly stateless widget
-// ---------------------------------------------------------------------------
-
 class _StatusIcon extends StatelessWidget {
   const _StatusIcon({required this.status, required this.cs});
 
@@ -1504,10 +1748,6 @@ class _StatusIcon extends StatelessWidget {
     }
   }
 }
-
-// ---------------------------------------------------------------------------
-// Reusable small widgets
-// ---------------------------------------------------------------------------
 
 class _AppBarIconButton extends StatelessWidget {
   const _AppBarIconButton({

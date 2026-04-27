@@ -111,6 +111,20 @@ class _LocalCache {
     return _parseJsonListInIsolate(raws);
   }
 
+  Future<void> deleteConversation(String conversationId) async {
+    final database = await db;
+    await database.delete(
+      'conversations',
+      where: 'id = ?',
+      whereArgs: [conversationId],
+    );
+    await database.delete(
+      'messages',
+      where: 'conversation_id = ?',
+      whereArgs: [conversationId],
+    );
+  }
+
   Future<void> upsertMessages(List<ChatMessageModel> msgs) async {
     if (msgs.isEmpty) return;
     final database = await db;
@@ -268,6 +282,52 @@ class _LruCache<K, V> {
   bool containsKey(K key) => _map.containsKey(key);
 }
 
+class ToxicityFilter {
+  static const List<String> _toxicPatterns = [
+    'fuck',
+    'shit',
+    'bitch',
+    'asshole',
+    'bastard',
+    'cunt',
+    'dick',
+    'pussy',
+    'nigger',
+    'nigga',
+    'faggot',
+    'retard',
+    'whore',
+    'slut',
+    'kill yourself',
+    'kys',
+    'go die',
+    'rape',
+    'i will kill',
+    'i\'ll kill',
+    'murder you',
+    'hate you',
+    'you suck',
+    'piece of shit',
+    'motherfucker',
+    'son of a bitch',
+    'idiot',
+    'moron',
+    'stupid',
+    'dumbass',
+    'loser',
+    'ugly',
+    'fat',
+  ];
+
+  static bool isToxic(String text) {
+    final lower = text.toLowerCase();
+    for (final pattern in _toxicPatterns) {
+      if (lower.contains(pattern)) return true;
+    }
+    return false;
+  }
+}
+
 class ChatRepository {
   ChatRepository({
     FirebaseFirestore? firestore,
@@ -306,6 +366,118 @@ class ChatRepository {
 
   bool isConversationBusy(String conversationId) =>
       _sendQueue.isBusy(conversationId);
+
+  Future<bool> checkUserExists(String userId) async {
+    if (userId.isEmpty) return false;
+    try {
+      final byDocId = await _profiles.doc(userId).get();
+      if (byDocId.exists) return true;
+      final byField = await _profiles
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+      return byField.docs.isNotEmpty;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  Future<bool> recordToxicityStrike(String userId) async {
+    try {
+      final snap = await _profiles
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return false;
+
+      final doc = snap.docs.first;
+      final data = doc.data();
+      final system = data['system'] as Map<String, dynamic>?;
+      final flags = system?['flags'] as Map<String, dynamic>?;
+      final currentStrikes = (flags?['toxicity_strikes'] as int?) ?? 0;
+      final newStrikes = currentStrikes + 1;
+
+      if (newStrikes >= 3) {
+        await doc.reference.update({
+          'system.flags.is_banned': true,
+          'system.flags.ban_reason': 'toxic_behavior',
+          'system.flags.toxicity_strikes': newStrikes,
+          'system.flags.banned_at': FieldValue.serverTimestamp(),
+        });
+        return true;
+      }
+
+      await doc.reference.update({'system.flags.toxicity_strikes': newStrikes});
+      return false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<void> banUserForToxicity(
+    String userId, {
+    String? conversationId,
+    String? toxicMessageId,
+  }) async {
+    final snap = await _profiles
+        .where('user_id', isEqualTo: userId)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return;
+
+    final futures = <Future<void>>[
+      snap.docs.first.reference.update({
+        'system.flags.is_banned': true,
+        'system.flags.ban_reason': 'toxic_behavior',
+        'system.flags.banned_at': FieldValue.serverTimestamp(),
+      }),
+    ];
+
+    if (conversationId != null && toxicMessageId != null) {
+      futures.add(
+        _messages(conversationId).doc(toxicMessageId).update({
+          'is_deleted': true,
+          'content':
+              'This message was removed for violating community guidelines.',
+        }),
+      );
+      futures.add(_cache.softDeleteMessage(toxicMessageId));
+    }
+
+    await Future.wait(futures);
+  }
+
+  Future<bool> isUserBanned(String userId) async {
+    try {
+      final snap = await _profiles
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return false;
+      final data = snap.docs.first.data();
+      final system = data['system'] as Map<String, dynamic>?;
+      final flags = system?['flags'] as Map<String, dynamic>?;
+      return flags?['is_banned'] as bool? ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  Future<int> getToxicityStrikes(String userId) async {
+    try {
+      final snap = await _profiles
+          .where('user_id', isEqualTo: userId)
+          .limit(1)
+          .get();
+      if (snap.docs.isEmpty) return 0;
+      final data = snap.docs.first.data();
+      final system = data['system'] as Map<String, dynamic>?;
+      final flags = system?['flags'] as Map<String, dynamic>?;
+      return (flags?['toxicity_strikes'] as int?) ?? 0;
+    } catch (_) {
+      return 0;
+    }
+  }
 
   Future<Map<String, dynamic>?> getUserProfile(String userId) async {
     if (userId.isEmpty) return null;
@@ -442,6 +614,12 @@ class ChatRepository {
     required String otherUserId,
     required String otherUsername,
   }) async {
+    final existing = await getIndividualConversation(
+      currentUserId,
+      otherUserId,
+    );
+    if (existing != null) return existing;
+
     final now = DateTime.now();
     final model = ConversationModel(
       type: ConversationType.individual,
@@ -521,7 +699,7 @@ class ChatRepository {
     final conv = ConversationModel.fromSnapshot(snap);
     final updatedIds = conv.participantIds.where((id) => id != userId).toList();
     if (updatedIds.isEmpty) {
-      await _conversations.doc(conversationId).update({'is_active': false});
+      await deleteConversation(conversationId);
       return;
     }
     final updatedUsernames = Map<String, String>.from(conv.participantUsernames)
@@ -535,8 +713,21 @@ class ChatRepository {
     });
   }
 
-  Future<void> deleteConversation(String conversationId) =>
-      _conversations.doc(conversationId).update({'is_active': false});
+  Future<void> deleteConversation(String conversationId) async {
+    const batchSize = 400;
+    while (true) {
+      final snap = await _messages(conversationId).limit(batchSize).get();
+      if (snap.docs.isEmpty) break;
+      final batch = _firestore.batch();
+      for (final doc in snap.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+      if (snap.docs.length < batchSize) break;
+    }
+    await _conversations.doc(conversationId).delete();
+    await _cache.deleteConversation(conversationId);
+  }
 
   Future<ChatMessageModel> sendMessage({
     required String conversationId,
@@ -587,6 +778,23 @@ class ChatRepository {
 
       final savedSnap = await ref.get();
       final saved = ChatMessageModel.fromMap(savedSnap.data()!, id: ref.id);
+
+      if (type == MessageType.text && ToxicityFilter.isToxic(content)) {
+        await _messages(conversationId).doc(ref.id).update({
+          'is_deleted': true,
+          'content':
+              'This message was removed for violating community guidelines.',
+        });
+        await _cache.softDeleteMessage(ref.id);
+
+        final banned = await recordToxicityStrike(senderId);
+        throw ToxicityException(
+          banned
+              ? 'Your account has been banned due to repeated toxic behavior.'
+              : 'Your message was flagged as toxic.',
+          banned: banned,
+        );
+      }
 
       await Future.wait([
         _updateConversationOnNewMessage(
@@ -852,43 +1060,17 @@ class ChatRepository {
     }
 
     final existing = await _getExistingRequestPair(fromUserId, toUserId);
-
-    if (existing != null) {
-      final req = existing.model;
-      final docId = existing.docId;
-
-      if (req.status == FriendRequestStatus.pending) {
-        if (req.fromUserId == fromUserId) {
-          throw const DuplicateFriendRequestException(
-            'You have already sent a friend request to this user.',
-          );
-        } else {
-          throw const DuplicateFriendRequestException(
-            'This user has already sent you a friend request. '
-            'Accept it instead of sending a new one.',
-          );
-        }
+    if (existing != null &&
+        existing.model.status == FriendRequestStatus.pending) {
+      if (existing.model.fromUserId == fromUserId) {
+        throw const DuplicateFriendRequestException(
+          'You have already sent a friend request to this user.',
+        );
+      } else {
+        throw const DuplicateFriendRequestException(
+          'This user has already sent you a friend request. Accept it instead.',
+        );
       }
-
-      final fromProfile = await getUserProfile(fromUserId);
-      final fromFullName = fromProfile?['full_name'] as String? ?? '';
-
-      await _friendRequests.doc(docId).update({
-        'from_user_id': fromUserId,
-        'from_username': fromUsername,
-        'from_full_name': fromFullName,
-        'from_profile_photo': fromProfilePhoto,
-        'to_user_id': toUserId,
-        'to_username': toUsername,
-        'status': FriendRequestStatus.pending.name,
-        'sent_at': FieldValue.serverTimestamp(),
-        'responded_at': null,
-      });
-
-      final updatedSnap = await _friendRequests.doc(docId).get();
-      final updated = FriendRequestModel.fromSnapshot(updatedSnap);
-      await FriendRequestNotificationService.instance.notify(updated);
-      return updated;
     }
 
     final fromProfile = await getUserProfile(fromUserId);
@@ -907,9 +1089,7 @@ class ChatRepository {
 
     final ref = await _friendRequests.add(model.toMap());
     final created = FriendRequestModel.fromSnapshot(await ref.get());
-
     await FriendRequestNotificationService.instance.notify(created);
-
     return created;
   }
 
@@ -955,12 +1135,8 @@ class ChatRepository {
 
   Future<void> respondToFriendRequest(
     String requestId,
-    FriendRequestStatus newStatus, {
-    String? toUserId,
-    String? fromUserId,
-    String? fromUsername,
-    String? fromFullName,
-  }) async {
+    FriendRequestStatus newStatus,
+  ) async {
     if (newStatus == FriendRequestStatus.accepted) {
       final reqSnap = await _friendRequests.doc(requestId).get();
       if (!reqSnap.exists) return;
@@ -977,7 +1153,6 @@ class ChatRepository {
           .get();
 
       final batch = _firestore.batch();
-
       batch.delete(_friendRequests.doc(requestId));
 
       if (existingFriend.docs.isEmpty) {
@@ -991,11 +1166,8 @@ class ChatRepository {
       }
 
       await batch.commit();
-    } else {
-      await _friendRequests.doc(requestId).update({
-        'status': newStatus.name,
-        'responded_at': FieldValue.serverTimestamp(),
-      });
+    } else if (newStatus == FriendRequestStatus.rejected) {
+      await _friendRequests.doc(requestId).delete();
     }
   }
 
@@ -1019,6 +1191,52 @@ class ChatRepository {
 
   Future<void> cancelFriendRequest(String requestId) =>
       _friendRequests.doc(requestId).delete();
+
+  Future<void> unblockUser(String requestId) =>
+      _friendRequests.doc(requestId).delete();
+
+  Future<FriendRequestModel?> getBlockedRequest(
+    String blockerId,
+    String blockedId,
+  ) async {
+    final snap = await _friendRequests
+        .where('from_user_id', isEqualTo: blockerId)
+        .where('to_user_id', isEqualTo: blockedId)
+        .where('status', isEqualTo: FriendRequestStatus.blocked.name)
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return FriendRequestModel.fromSnapshot(snap.docs.first);
+  }
+
+  Future<FriendRequestModel> blockUser({
+    required String blockerId,
+    required String blockedId,
+  }) async {
+    final friendDocId = await getFriendDocId(blockerId, blockedId);
+    if (friendDocId != null) {
+      await _friends.doc(friendDocId).delete();
+    }
+
+    final existing = await _getExistingRequestPair(blockerId, blockedId);
+    if (existing != null) {
+      await _friendRequests.doc(existing.docId).delete();
+    }
+
+    final ref = await _friendRequests.add({
+      'from_user_id': blockerId,
+      'to_user_id': blockedId,
+      'from_username': '',
+      'from_full_name': '',
+      'from_profile_photo': '',
+      'to_username': '',
+      'status': FriendRequestStatus.blocked.name,
+      'sent_at': FieldValue.serverTimestamp(),
+      'responded_at': null,
+    });
+
+    return FriendRequestModel.fromSnapshot(await ref.get());
+  }
 
   Future<List<Map<String, dynamic>>> getFriendsList(String userId) async {
     final results = await Future.wait([
@@ -1353,6 +1571,15 @@ class MessageLimitException implements Exception {
 
   @override
   String toString() => 'MessageLimitException: $message';
+}
+
+class ToxicityException implements Exception {
+  const ToxicityException(this.message, {this.banned = false});
+  final String message;
+  final bool banned;
+
+  @override
+  String toString() => 'ToxicityException: $message';
 }
 
 class DuplicateFriendRequestException implements Exception {

@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:flutter_education_app/features/app/views/screens/settings_screen.dart';
 import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';

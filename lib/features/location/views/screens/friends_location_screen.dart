@@ -130,6 +130,10 @@ class _FriendsLocationScreenState extends State<FriendsLocationScreen> {
     final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Track Distance'),
         actions: [
           IconButton(
@@ -145,7 +149,7 @@ class _FriendsLocationScreenState extends State<FriendsLocationScreen> {
           : ListView.separated(
               padding: const EdgeInsets.all(16),
               itemCount: _friends.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 10),
+              separatorBuilder: (_, _) => const SizedBox(height: 10),
               itemBuilder: (_, i) => FriendCard(
                 friend: _friends[i],
                 theme: theme,

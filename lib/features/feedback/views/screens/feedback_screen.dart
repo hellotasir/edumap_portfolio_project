@@ -76,7 +76,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
       final seen = <String, FeedbackModel>{};
       for (final f in all) {
-        if (!seen.containsKey(f.userId)) seen[f.userId] = f;
+        if (!seen.containsKey(f.user_id)) seen[f.user_id] = f;
       }
 
       final deduped = seen.values.toList();
@@ -86,7 +86,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         setState(() {
           _allFeedback = deduped;
           _myFeedback = userId != null
-              ? deduped.where((f) => f.userId == userId).firstOrNull
+              ? deduped.where((f) => f.user_id == userId).firstOrNull
               : null;
         });
       }
@@ -479,7 +479,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
                       itemCount: filtered.length,
                       itemBuilder: (ctx, i) {
                         final feedback = filtered[i];
-                        final isOwner = feedback.userId == currentUserId;
+                        final isOwner = feedback.user_id == currentUserId;
                         return FeedbackTile(
                           feedback: feedback,
                           isOwner: isOwner,

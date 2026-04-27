@@ -1,6 +1,7 @@
 // ignore_for_file: use_build_context_synchronously
 
 import 'package:flutter/material.dart';
+import 'package:flutter_education_app/features/app/repositories/delete_user_data_repository.dart';
 import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
 import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
 import 'package:flutter_education_app/features/auth/views/widgets/auth_filled_loading_button.dart';
@@ -61,7 +62,6 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
     super.dispose();
   }
 
-
   void _showError(String message) {
     if (!mounted) return;
     SnackbarWidget(message: message).showSnackbar(context);
@@ -95,9 +95,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
     ),
   );
 
-
   Future<void> _submitDeletionRequest() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (!_checkedUnderstood) {
       _showError(
         'Please confirm that you understand this action is irreversible.',
@@ -109,24 +109,54 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
     if (confirmed != true || !mounted) return;
 
     setState(() => _isLoading = true);
+
     try {
-      final repo = ref.read(authRepositoryProvider);
-      await repo.deleteAccount(_passwordController.text.trim());
-      await repo.logout();
+      final authRepo = ref.read(authRepositoryProvider);
+
+      final currentUser = authRepo.currentUser;
+      if (currentUser == null) {
+        _showError('No authenticated user found. Please log in again.');
+        return;
+      }
+
+      final userId = currentUser.id;
+
+      final deleteRepo = DeleteRepository();
+      await deleteRepo.deleteAllUserData(
+        userId,
+        currentUser.email ?? '',
+        strict: true,
+        showLogs: true,
+      );
+
+      await authRepo.deleteAccount(_passwordController.text.trim());
+
+      try {
+        await authRepo.logout();
+      } catch (_) {}
 
       if (mounted) {
-        AppNavigator(screen: const LoginScreen()).navigate(context);
         setState(() => _step = _DeleteStep.deleted);
+        await Future.delayed(const Duration(milliseconds: 800));
+        if (mounted) {
+          AppNavigator(screen: const LoginScreen()).navigate(context);
+        }
       }
-    } on Exception {
+    } on DeleteRepositoryException catch (e) {
       if (mounted) {
-        _showError('Could not delete your account. Please try again.');
+        _showError(
+          'Some data could not be deleted:\n${e.errors.keys.join(', ')}\n'
+          'Please contact support.',
+        );
+      }
+    } on Exception catch (e) {
+      if (mounted) {
+        _showError('Account deletion failed: $e');
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +165,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
         appBar: AppBar(
           title: const Text('Delete Account'),
           leading: IconButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: _isLoading ? null : () => Navigator.pop(context),
             icon: const Icon(Icons.chevron_left_rounded),
           ),
         ),
@@ -197,9 +227,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
             onFieldSubmitted: (_) =>
                 _isLoading ? null : _submitDeletionRequest(),
             validator: (v) {
-              if (v == null || v.trim().isEmpty) {
-                return 'Password is required';
-              }
+              if (v == null || v.trim().isEmpty) return 'Password is required';
               if (v.trim().length < 6) {
                 return 'Password must be at least 6 characters';
               }
@@ -208,8 +236,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
           ),
           const SizedBox(height: 20),
           InkWell(
-            onTap: () =>
-                setState(() => _checkedUnderstood = !_checkedUnderstood),
+            onTap: _isLoading
+                ? null
+                : () =>
+                      setState(() => _checkedUnderstood = !_checkedUnderstood),
             borderRadius: BorderRadius.circular(8),
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 4),
@@ -219,8 +249,10 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
                   Checkbox(
                     value: _checkedUnderstood,
                     activeColor: Colors.red.shade600,
-                    onChanged: (v) =>
-                        setState(() => _checkedUnderstood = v ?? false),
+                    onChanged: _isLoading
+                        ? null
+                        : (v) =>
+                              setState(() => _checkedUnderstood = v ?? false),
                   ),
                   const SizedBox(width: 4),
                   Expanded(
@@ -315,9 +347,9 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
   }
 }
 
-
 class _WarningBanner extends StatelessWidget {
   const _WarningBanner({required this.theme});
+
   final ThemeData theme;
 
   @override

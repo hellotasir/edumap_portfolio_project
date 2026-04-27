@@ -46,15 +46,21 @@ dependencies:
   flutter_sslcommerz: ^3.0.1
   stripe_android: ^12.6.0
   zego_uikit_prebuilt_call: ^4.22.4
-  sentry: ^9.17.0
   firebase_messaging: ^16.2.0
   intl: ^0.20.2
+  genkit: ^0.12.1
+  mockito: ^5.6.4
+  firebase_crashlytics: ^5.2.0
+  firebase_performance: ^0.11.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   zego_zim: 2.27.0
+  test: ^1.30.0
+  integration_test:
+    sdk: flutter
 
 
 flutter:

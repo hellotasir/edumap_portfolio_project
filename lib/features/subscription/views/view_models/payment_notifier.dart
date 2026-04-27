@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_education_app/core/consts/api_keys.dart';
 import 'package:flutter_education_app/features/subscription/models/subscription_plan.dart';
 import 'package:flutter_education_app/features/subscription/repositories/payment_repository.dart';
 import 'package:flutter_education_app/features/profile/models/profile_model.dart';
@@ -130,8 +130,8 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     required ProfileModel profile,
   }) async {
     
-    final storeID = dotenv.env['SSL_COMMERZ_STORE_ID']!;
-    final storePassword = dotenv.env['SSL_COMMERZ_STORE_PASSWORD']!;
+    final storeID = sslCommerzStoreID;
+    final storePassword = sslCommerzStorePassword;
     final tranId = 'TXN${DateTime.now().millisecondsSinceEpoch}';
 
     final sslcommerz = Sslcommerz(

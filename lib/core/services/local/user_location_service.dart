@@ -1,7 +1,7 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_education_app/core/consts/api_keys.dart';
 import 'package:flutter_education_app/features/location/models/location_model.dart';
 import 'package:flutter_education_app/features/location/repositories/location_repository.dart';
 import 'package:geolocator/geolocator.dart';
@@ -23,7 +23,7 @@ class GeocodingException implements Exception {
 }
 
 class _NominatimClient {
-  static String get _baseUrl => dotenv.env['OPEN_STREET_API_URL']!;
+  static String get _baseUrl => openStreetMapApiUrl;
   static const Map<String, String> _headers = {
     'User-Agent': 'FlutterEducationApp/1.0 (demo@email.com)',
     'Accept-Language': 'en',

@@ -1,20 +1,22 @@
+// ignore_for_file: non_constant_identifier_names
+
 import 'package:flutter/foundation.dart';
 
 @immutable
 class FeedbackModel {
   const FeedbackModel({
     this.id,
-    required this.userId,
+    required this.user_id,
     required this.userName,
     required this.category,
     required this.rating,
     required this.message,
     required this.createdAt,
-  }) : assert(userId != '', 'userId must not be empty'),
+  }) : assert(user_id != '', 'userId must not be empty'),
        assert(rating >= 1 && rating <= 5, 'rating must be between 1 and 5');
 
   final String? id;
-  final String userId;
+  final String user_id;
   final String userName;
   final String category;
   final int rating;
@@ -23,7 +25,7 @@ class FeedbackModel {
 
   FeedbackModel copyWith({
     String? id,
-    String? userId,
+    String? user_id,
     String? userName,
     String? category,
     int? rating,
@@ -31,7 +33,7 @@ class FeedbackModel {
     DateTime? createdAt,
   }) => FeedbackModel(
     id: id ?? this.id,
-    userId: userId ?? this.userId,
+    user_id: user_id ?? this.user_id,
     userName: userName ?? this.userName,
     category: category ?? this.category,
     rating: rating ?? this.rating,
@@ -45,7 +47,7 @@ class FeedbackModel {
       other is FeedbackModel &&
           runtimeType == other.runtimeType &&
           id == other.id &&
-          userId == other.userId &&
+          user_id == other.user_id &&
           userName == other.userName &&
           category == other.category &&
           rating == other.rating &&
@@ -54,13 +56,13 @@ class FeedbackModel {
 
   @override
   int get hashCode =>
-      Object.hash(id, userId, userName, category, rating, message, createdAt);
+      Object.hash(id, user_id, userName, category, rating, message, createdAt);
 
   @override
   String toString() =>
       'FeedbackModel('
       'id: $id, '
-      'userId: $userId, '
+      'user_id: $user_id, '
       'userName: $userName, '
       'category: $category, '
       'rating: $rating, '

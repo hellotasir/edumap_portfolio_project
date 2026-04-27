@@ -119,7 +119,8 @@ class ChatSettingsScreen extends StatelessWidget {
               onTap: () => _confirmAction(
                 context,
                 title: 'Delete conversation?',
-                body: 'This conversation will be removed from your inbox.',
+                body:
+                    'This conversation and all messages will be permanently deleted.',
                 confirmLabel: 'Delete',
                 onConfirm: () async {
                   await chatRepository.deleteConversation(conversation.id!);
@@ -130,11 +131,10 @@ class ChatSettingsScreen extends StatelessWidget {
               ),
             ),
           if (!_isGroup)
-            _CompactTile(
-              icon: Icons.block_rounded,
-              iconColor: Colors.orange,
-              label: 'Block user',
-              onTap: () => _confirmBlock(context),
+            _BlockUnblockTile(
+              currentUserId: currentUserId,
+              conversation: conversation,
+              chatRepository: chatRepository,
             ),
           const SizedBox(height: 32),
         ],
@@ -375,38 +375,6 @@ class ChatSettingsScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmBlock(BuildContext context) async {
-    final otherUserId = conversation.participantIds.firstWhere(
-      (id) => id != currentUserId,
-      orElse: () => '',
-    );
-    final otherUsername =
-        conversation.participantUsernames[otherUserId] ?? 'this user';
-
-    _confirmAction(
-      context,
-      title: 'Block $otherUsername?',
-      body: '$otherUsername will no longer be able to message you.',
-      confirmLabel: 'Block',
-      onConfirm: () async {
-        final req = await chatRepository.getRequestBetween(
-          currentUserId,
-          otherUserId,
-        );
-        if (req != null) {
-          await chatRepository.respondToFriendRequest(
-            req.id!,
-            FriendRequestStatus.blocked,
-          );
-        }
-        await chatRepository.deleteConversation(conversation.id!);
-        if (context.mounted) {
-          AppNavigator(screen: HomeScreen()).navigate(context);
-        }
-      },
-    );
-  }
-
   Future<void> _confirmAction(
     BuildContext context, {
     required String title,
@@ -437,6 +405,187 @@ class ChatSettingsScreen extends StatelessWidget {
   }
 }
 
+class _BlockUnblockTile extends StatefulWidget {
+  const _BlockUnblockTile({
+    required this.currentUserId,
+    required this.conversation,
+    required this.chatRepository,
+  });
+
+  final String currentUserId;
+  final ConversationModel conversation;
+  final ChatRepository chatRepository;
+
+  @override
+  State<_BlockUnblockTile> createState() => _BlockUnblockTileState();
+}
+
+class _BlockUnblockTileState extends State<_BlockUnblockTile> {
+  bool _isBlocked = false;
+  String? _blockedRequestId;
+  bool _loading = true;
+  bool _userExists = true;
+
+  String get _otherUserId => widget.conversation.participantIds.firstWhere(
+    (id) => id != widget.currentUserId,
+    orElse: () => '',
+  );
+
+  String get _otherUsername =>
+      widget.conversation.participantUsernames[_otherUserId] ?? 'this user';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBlockState();
+  }
+
+  Future<void> _loadBlockState() async {
+    if (_otherUserId.isEmpty) {
+      if (mounted) setState(() => _loading = false);
+      return;
+    }
+
+    final exists = await widget.chatRepository.checkUserExists(_otherUserId);
+    if (!exists) {
+      if (mounted) {
+        setState(() {
+          _userExists = false;
+          _loading = false;
+        });
+      }
+      return;
+    }
+
+    final blocked = await widget.chatRepository.getBlockedRequest(
+      widget.currentUserId,
+      _otherUserId,
+    );
+    if (mounted) {
+      setState(() {
+        _isBlocked = blocked != null;
+        _blockedRequestId = blocked?.id;
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _block(BuildContext context) async {
+    final cs = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Block $_otherUsername?'),
+        content: Text(
+          '$_otherUsername will no longer be able to message you and will be removed from your friends.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: cs.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Block'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    await widget.chatRepository.blockUser(
+      blockerId: widget.currentUserId,
+      blockedId: _otherUserId,
+    );
+    await widget.chatRepository.deleteConversation(widget.conversation.id!);
+
+    if (!mounted) return;
+    AppNavigator(screen: HomeScreen()).navigate(context);
+  }
+
+  Future<void> _unblock(BuildContext context) async {
+    final cs = Theme.of(context).colorScheme;
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text('Unblock $_otherUsername?'),
+        content: Text(
+          '$_otherUsername will be able to send you friend requests and messages again.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: cs.primary),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Unblock'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    if (_blockedRequestId != null) {
+      await widget.chatRepository.unblockUser(_blockedRequestId!);
+    }
+
+    if (mounted) {
+      setState(() {
+        _isBlocked = false;
+        _blockedRequestId = null;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('$_otherUsername has been unblocked.'),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    if (!_userExists) return const SizedBox.shrink();
+
+    if (_loading) {
+      return const ListTile(
+        dense: true,
+        contentPadding: EdgeInsets.symmetric(horizontal: 16),
+        leading: SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator.adaptive(strokeWidth: 2),
+        ),
+        title: Text(''),
+      );
+    }
+
+    if (_isBlocked) {
+      return _CompactTile(
+        icon: Icons.block_rounded,
+        iconColor: cs.primary,
+        label: 'Unblock user',
+        onTap: () => _unblock(context),
+      );
+    }
+
+    return _CompactTile(
+      icon: Icons.block_rounded,
+      iconColor: Colors.orange,
+      label: 'Block user',
+      onTap: () => _block(context),
+    );
+  }
+}
+
 class _RemoveFriendTile extends StatefulWidget {
   const _RemoveFriendTile({
     required this.currentUserId,
@@ -456,7 +605,8 @@ class _RemoveFriendTile extends StatefulWidget {
 
 class _RemoveFriendTileState extends State<_RemoveFriendTile> {
   bool _isFriend = false;
-  String? _requestId;
+  String? _friendDocId;
+  bool _userExists = true;
 
   @override
   void initState() {
@@ -471,31 +621,34 @@ class _RemoveFriendTileState extends State<_RemoveFriendTile> {
     );
     if (otherUserId.isEmpty) return;
 
-    final results = await Future.wait([
-      widget.chatRepository.getRequestBetween(
-        widget.currentUserId,
-        otherUserId,
-      ),
-      widget.chatRepository.getRequestBetween(
-        otherUserId,
-        widget.currentUserId,
-      ),
-      widget.chatRepository.areFriends(widget.currentUserId, otherUserId),
-    ]);
+    final exists = await widget.chatRepository.checkUserExists(otherUserId);
+    if (!exists) {
+      if (mounted) setState(() => _userExists = false);
+      return;
+    }
 
-    final req = results[0] as dynamic ?? results[1] as dynamic;
-    final isFriend = results[2] as bool;
+    final isFriend = await widget.chatRepository.areFriends(
+      widget.currentUserId,
+      otherUserId,
+    );
+    final friendDocId = isFriend
+        ? await widget.chatRepository.getFriendDocId(
+            widget.currentUserId,
+            otherUserId,
+          )
+        : null;
 
     if (mounted) {
       setState(() {
         _isFriend = isFriend;
-        _requestId = (req as dynamic)?.id as String?;
+        _friendDocId = friendDocId;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_userExists) return const SizedBox.shrink();
     if (!_isFriend) return const SizedBox.shrink();
 
     final otherUserId = widget.conversation.participantIds.firstWhere(
@@ -532,8 +685,8 @@ class _RemoveFriendTileState extends State<_RemoveFriendTile> {
             ],
           ),
         );
-        if (confirmed == true && _requestId != null) {
-          await widget.chatRepository.removeFriend(_requestId!);
+        if (confirmed == true && _friendDocId != null) {
+          await widget.chatRepository.removeFriend(_friendDocId!);
           if (context.mounted) setState(() => _isFriend = false);
         }
       },

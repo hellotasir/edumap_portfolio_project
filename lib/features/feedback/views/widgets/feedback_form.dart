@@ -93,7 +93,7 @@ class FeedbackFormState extends State<FeedbackForm> {
           'Anonymous';
 
       final model = FeedbackModel(
-        userId: user?.id ?? 'anonymous',
+        user_id: user?.id ?? 'anonymous',
         userName: userName,
         category: _category,
         rating: _rating,
