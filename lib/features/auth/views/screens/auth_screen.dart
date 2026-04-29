@@ -25,13 +25,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
   Future<void> _syncServices(AuthState authState) async {
     final userId = authState.session?.user.id;
 
-    if (userId != null && userId != _lastUserId) {
-      _lastUserId = userId;
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('background_service_user_id', userId);
-      FirestoreListenerService.instance.startListening(userId);
-      await FcmTokenService.instance.saveToken(userId);
-    } else if (userId == null && _lastUserId != null) {
+    if (userId == _lastUserId) return;
+
+    if (_lastUserId != null) {
       final oldId = _lastUserId!;
       _lastUserId = null;
 
@@ -41,7 +37,17 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
       FirestoreListenerService.instance.stopListening();
       await FcmTokenService.instance.removeToken(oldId);
     }
-  }
+
+    if (userId != null) {
+      _lastUserId = userId;
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('background_service_user_id', userId);
+
+      FirestoreListenerService.instance.startListening(userId);
+      await FcmTokenService.instance.saveToken(userId);
+    }
+}
 
   @override
   Widget build(BuildContext context) {

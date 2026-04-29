@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
+import 'package:edumap_portfolio_project/features/profile/views/screens/profile_settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:edumap_portfolio_project/features/ai/views/screens/ai_assistant_screen.dart';
@@ -150,7 +151,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void _openProfile() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+      MaterialPageRoute(
+        builder: (_) => _cachedProfile == null
+            ? const ProfileSettingsScreen()
+            : const ProfileScreen(),
+      ),
     );
   }
 

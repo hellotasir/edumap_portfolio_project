@@ -5,7 +5,7 @@ import 'package:edumap_portfolio_project/features/app/repositories/storage_repos
 import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
 import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
 import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_provider.dart';
-import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_state.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_state.dart';
 import 'package:edumap_portfolio_project/features/profile/views/widgets/image_source_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -32,6 +32,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   void _init() => loadProfile();
 
+  /// Load profile WITHOUT auto-creating if missing
   Future<void> loadProfile() async {
     state = state.copyWith(loading: true, clearError: true);
 
@@ -47,6 +48,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       );
 
       if (results.isNotEmpty) {
+        // Clean up duplicates for own profile only
         if (isOwnProfile) {
           final currentEmail = _authRepo.currentUser?.email ?? '';
           if (currentEmail.isNotEmpty) {
@@ -54,17 +56,51 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
           }
         }
         state = state.copyWith(profile: results.first, loading: false);
-      } else if (isOwnProfile) {
-        await _createDefaultProfile(uid);
       } else {
+        // FIXED: Do NOT auto-create here
         state = state.copyWith(
           loading: false,
-          errorMessage: 'Profile not found.',
+          errorMessage: isOwnProfile
+              ? 'Profile not found. Please create one.'
+              : 'Profile not found.',
         );
       }
     } catch (e, st) {
       debugPrint('[ProfileNotifier] error: $e\n$st');
       state = state.copyWith(loading: false, errorMessage: e.toString());
+    }
+  }
+
+  /// Explicit method to create profile - call this manually when needed
+  Future<void> createProfile() async {
+    if (!isOwnProfile) {
+      throw Exception('Cannot create profile for other users');
+    }
+
+    final uid = _currentUserId;
+    if (uid == null) {
+      throw Exception('Not logged in');
+    }
+
+    state = state.copyWith(loading: true, clearError: true);
+
+    try {
+      // Check if profile already exists
+      final existing = await _service.getAll(
+        query: (col) => col.where('user_id', isEqualTo: uid).limit(1),
+      );
+
+      if (existing.isNotEmpty) {
+        state = state.copyWith(profile: existing.first, loading: false);
+        return;
+      }
+
+      // Create new profile
+      await _createDefaultProfile(uid);
+    } catch (e, st) {
+      debugPrint('[ProfileNotifier] create error: $e\n$st');
+      state = state.copyWith(loading: false, errorMessage: e.toString());
+      rethrow;
     }
   }
 
@@ -76,6 +112,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       if (allByEmail.length <= 1) return;
 
+      // Keep only the one matching current user_id
       final duplicates = allByEmail.where((p) => p.userId != uid).toList();
 
       for (final doc in duplicates) {

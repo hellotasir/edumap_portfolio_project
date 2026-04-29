@@ -1,7 +1,8 @@
-import 'dart:async';
 import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_provider.dart';
-import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_state.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:edumap_portfolio_project/features/profile/repositories/profile_repository.dart';
 
 final profileStreamProvider = StreamProvider.family<ProfileState, String?>((
   ref,
@@ -9,34 +10,37 @@ final profileStreamProvider = StreamProvider.family<ProfileState, String?>((
 ) async* {
   yield const ProfileState(loading: true);
 
-  try {
-    final notifier = ref.read(profileProvider(userId).notifier);
-    await notifier.loadProfile();
-    final state = ref.read(profileProvider(userId));
-    yield state;
-  } catch (e) {
-    yield ProfileState(loading: false, errorMessage: e.toString());
+  final authRepo = ref.read(authRepositoryProvider);
+  final targetUserId = userId ?? authRepo.currentUser?.id;
+
+  if (targetUserId == null) {
+    yield const ProfileState(loading: false, errorMessage: 'Not logged in.');
     return;
   }
 
-  final controller = StreamController<ProfileState>();
+  final firestore = FirebaseFirestore.instance;
+  final repository = ProfileRepository();
 
-  final timer = Timer.periodic(const Duration(seconds: 30), (_) async {
-    try {
-      final notifier = ref.read(profileProvider(userId).notifier);
-      await notifier.loadProfile();
-      final state = ref.read(profileProvider(userId));
-      controller.add(state);
-    } catch (e) {
-      controller
-          .add(ProfileState(loading: false, errorMessage: e.toString()));
+  try {
+    
+    final query = firestore
+        .collection('profiles')
+        .where('user_id', isEqualTo: targetUserId)
+        .limit(1);
+
+    await for (final snapshot in query.snapshots()) {
+      if (snapshot.docs.isEmpty) {
+        yield const ProfileState(
+          loading: false,
+          errorMessage: 'Profile not found.',
+        );
+      } else {
+        final doc = snapshot.docs.first;
+        final profile = repository.fromSnapshot(doc);
+        yield ProfileState(profile: profile, loading: false);
+      }
     }
-  });
-
-  ref.onDispose(() {
-    timer.cancel();
-    controller.close();
-  });
-
-  yield* controller.stream;
+  } catch (e) {
+    yield ProfileState(loading: false, errorMessage: e.toString());
+  }
 });

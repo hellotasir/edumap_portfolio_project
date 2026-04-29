@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously, deprecated_member_use
+// ignore_for_file: curly_braces_in_flow_control_structures, use_build_context_synchronously, deprecated_member_use
 
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/mfa_widget.dart';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
@@ -10,9 +10,9 @@ import 'package:edumap_portfolio_project/features/profile/repositories/profile_r
 import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
-  const ProfileSettingsScreen({super.key, required this.profile});
+  const ProfileSettingsScreen({super.key, this.profile});
 
-  final ProfileModel profile;
+  final ProfileModel? profile;
 
   @override
   State<ProfileSettingsScreen> createState() => _ProfileSettingsScreenState();
@@ -70,12 +70,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   @override
   void initState() {
     super.initState();
-    _selectedMode = widget.profile.currentMode;
-    _populate(widget.profile);
+    _selectedMode = widget.profile?.currentMode ?? 'student';
+    if (widget.profile != null) _populate(widget.profile!); 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (final c in _controllers) {
-        c.addListener(_onChanged);
-      }
+      for (final c in _controllers) c.addListener(_onChanged);
     });
   }
 
@@ -120,14 +118,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    if (widget.profile.id == null) return;
 
     setState(() => _saving = true);
     try {
+      final isUpdate = widget.profile?.id != null;
       final newMode = _selectedMode;
-      final updatedModes = {...widget.profile.availableModes, newMode}.toList();
+      final updatedModes = isUpdate
+          ? {...widget.profile!.availableModes, newMode}.toList()
+          : [newMode];
 
-      await _service.update(widget.profile.id!, {
+      if (isUpdate) {
+        await _service.update(widget.profile!.id!, {
         'current_mode': newMode,
         'available_modes': updatedModes,
         'username': _usernameCtrl.text.trim(),
@@ -152,17 +153,31 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             : 'beginner',
         'updated_at': DateTime.now(),
       });
+      } else {
+      
+        final userId = AuthRepository().currentUser?.id ?? '';
+        final now = DateTime.now();
 
-      final p = widget.profile;
-      final updated = p.copyWith(
+        final newProfile = ProfileModel(
+          id: null,
+          userId: userId,
         username: _usernameCtrl.text.trim(),
+          email: '',        
         phone: _phoneCtrl.text.trim(),
+          passwordHash: '',
         currentMode: newMode,
         availableModes: updatedModes,
-        updatedAt: DateTime.now(),
-        profile: p.profile.copyWith(
+          isVerified: false,
+          status: 'active',
+          createdAt: now,
+          updatedAt: now,
+          lastLogin: now,
+          profile: ProfileInfo(
           fullName: _fullNameCtrl.text.trim(),
+            profilePhoto: '',
+            coverPhoto: '',
           bio: _bioCtrl.text.trim(),
+            dateOfBirth: null,
           gender: _gender,
           languages: _splitComma(_languagesCtrl.text),
           location: Location(
@@ -177,7 +192,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ),
         ),
         studentProfile: StudentProfile(
-          isActive: p.studentProfile.isActive,
+            isActive: newMode == 'student',
           interests: _splitComma(_interestsCtrl.text),
           currentLevel: _levelCtrl.text.trim().isNotEmpty
               ? _levelCtrl.text.trim()
@@ -189,11 +204,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           expertise: _splitComma(_expertiseCtrl.text),
           yearsOfExperience: int.tryParse(_yearsCtrl.text.trim()) ?? 0,
         ),
+          system: SystemInfo(isBanned: false, isFeaturedInstructor: false),
       );
+
+  
+        await _service.add(newProfile);
+      }
 
       if (!mounted) return;
       setState(() => _dirty = false);
-      Navigator.pop(context, updated);
+      _showSnack(isUpdate ? 'Profile updated!' : 'Profile created!');
+      Navigator.pop(context);
     } catch (e, st) {
       debugPrint('[ProfileSettingsScreen] $e\n$st');
       _showSnack('Save failed: $e', error: true);
@@ -503,7 +524,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           ),
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
-            child: _selectedMode != widget.profile.currentMode
+            child: _selectedMode != (widget.profile?.currentMode ?? 'student')
                 ? Padding(
                     padding: const EdgeInsets.only(top: 10),
                     child: Row(

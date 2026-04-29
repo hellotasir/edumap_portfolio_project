@@ -1,6 +1,6 @@
 import 'package:edumap_portfolio_project/features/app/repositories/storage_repository.dart';
 import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_notifier.dart';
-import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_state.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:image_picker/image_picker.dart';

@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:edumap_portfolio_project/core/services/auth/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -27,8 +28,11 @@ class AuthRepository {
       password: password,
       data: data,
     );
+    
     if (response.user == null) throw Exception('Signup failed');
   }
+
+  
 
   Future<void> signInWithIdToken({
     required OAuthProvider provider,
@@ -93,6 +97,16 @@ class AuthRepository {
   }
 
   Future<void> deleteAccount(String password) async {
+    final usersRef = FirebaseFirestore.instance.collection('profiles');
+
+    final query = await usersRef
+        .where('user_id', isEqualTo: currentUser?.id)
+        .get();
+
+    for (final doc in query.docs) {
+      await doc.reference.delete();
+    }
+
     final email = currentUser?.email;
     if (email == null) throw Exception('No authenticated user found');
     await login(email, password);
