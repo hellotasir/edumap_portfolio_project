@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
-import 'package:flutter_education_app/features/location/views/widgets/add_row.dart';
-import 'package:flutter_education_app/features/location/views/widgets/warn_row.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/add_row.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/warn_row.dart';
 
 class DistancePanel extends StatelessWidget {
   const DistancePanel({

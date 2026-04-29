@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/chat/models/conversation_model.dart';
-import 'package:flutter_education_app/features/chat/models/user_preference_model.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/avatar.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/empty_state.dart';
+import 'package:edumap_portfolio_project/features/chat/models/conversation_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/user_preference_model.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/shared/avatar.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/shared/empty_state.dart';
 
 class FriendsTab extends StatefulWidget {
   const FriendsTab({

@@ -1,3 +1,4 @@
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
@@ -21,24 +22,26 @@ class CallScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ZegoUIKitPrebuiltCall(
-      appID: _appID,
-      appSign: _appSign,
-      userID: userID,
-      userName: userName,
-      callID: callID,
+    return NetworkWidget(
+      child: ZegoUIKitPrebuiltCall(
+        appID: _appID,
+        appSign: _appSign,
+        userID: userID,
+        userName: userName,
+        callID: callID,
 
-      config: isVideoCall ? _videoCallConfig() : _voiceCallConfig(),
+        config: isVideoCall ? _videoCallConfig() : _voiceCallConfig(),
 
-      events: ZegoUIKitPrebuiltCallEvents(
-        onHangUpConfirmation: (event, defaultAction) async {
-          final result = await _showEndDialog(context);
-          return result == true ? await defaultAction() : false;
-        },
-        onCallEnd: (event, defaultAction) {
-          debugPrint('Call Ended: ${event.reason}');
-          defaultAction();
-        },
+        events: ZegoUIKitPrebuiltCallEvents(
+          onHangUpConfirmation: (event, defaultAction) async {
+            final result = await _showEndDialog(context);
+            return result == true ? await defaultAction() : false;
+          },
+          onCallEnd: (event, defaultAction) {
+            debugPrint('Call Ended: ${event.reason}');
+            defaultAction();
+          },
+        ),
       ),
     );
   }

@@ -1,20 +1,23 @@
-// ignore_for_file: prefer_final_fields
+// ignore_for_file: deprecated_member_use, prefer_final_fields
 
 import 'dart:async';
 import 'dart:io';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/chat/views/screens/call_screen.dart';
-import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
-import 'package:flutter_education_app/features/chat/models/conversation_model.dart';
-import 'package:flutter_education_app/features/chat/models/user_preference_model.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart'
+import 'package:edumap_portfolio_project/features/chat/views/screens/call_screen.dart';
+import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/conversation_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/user_preference_model.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart'
     hide MessageLimitException;
-import 'package:flutter_education_app/features/chat/views/screens/chat_settings_screen.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/audio_message_bubble.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/image_message_bubble.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/video_message_bubble.dart';
-import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/features/chat/views/screens/chat_settings_screen.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/chat/app_bar_icon_button.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/chat/attach_item.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/chat/chat_bubble.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/chat/circle_icon_button.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/chat/typing_dots.dart';
+import 'package:edumap_portfolio_project/features/profile/views/screens/profile_screen.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path_provider/path_provider.dart';
@@ -584,111 +587,114 @@ class _ChatScreenState extends State<ChatScreen> {
             _focusNode.unfocus();
             if (_isAttachMenuOpen) setState(() => _isAttachMenuOpen = false);
           },
-          child: Scaffold(
-            backgroundColor: cs.surface,
-            appBar: _buildAppBar(context, cs, tt),
-            body: Column(
-              children: [
-                if (_isBanned) RepaintBoundary(child: _buildBanBanner(cs, tt)),
-                if (!_isBanned && !_isGroup && _otherUserExists == false)
-                  RepaintBoundary(child: _buildDeletedUserBanner(cs, tt)),
-                if (!_isBanned &&
-                    _otherUserExists != false &&
-                    !_isFriend &&
-                    _isFriendLoaded &&
-                    !_isGroup)
-                  RepaintBoundary(child: _buildNonFriendBanner(cs, tt)),
-                Expanded(
-                  child: StreamBuilder<List<ChatMessageModel>>(
-                    stream: widget.chatRepository.watchMessages(
-                      _conversation.id!,
-                    ),
-                    builder: (context, snap) {
-                      if (snap.connectionState == ConnectionState.waiting &&
-                          !snap.hasData) {
-                        return Center(
-                          child: CircularProgressIndicator.adaptive(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              cs.primary,
+          child: NetworkWidget(
+            child: Scaffold(
+              backgroundColor: cs.surface,
+              appBar: _buildAppBar(context, cs, tt),
+              body: Column(
+                children: [
+                  if (_isBanned)
+                    RepaintBoundary(child: _buildBanBanner(cs, tt)),
+                  if (!_isBanned && !_isGroup && _otherUserExists == false)
+                    RepaintBoundary(child: _buildDeletedUserBanner(cs, tt)),
+                  if (!_isBanned &&
+                      _otherUserExists != false &&
+                      !_isFriend &&
+                      _isFriendLoaded &&
+                      !_isGroup)
+                    RepaintBoundary(child: _buildNonFriendBanner(cs, tt)),
+                  Expanded(
+                    child: StreamBuilder<List<ChatMessageModel>>(
+                      stream: widget.chatRepository.watchMessages(
+                        _conversation.id!,
+                      ),
+                      builder: (context, snap) {
+                        if (snap.connectionState == ConnectionState.waiting &&
+                            !snap.hasData) {
+                          return Center(
+                            child: CircularProgressIndicator.adaptive(
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                cs.primary,
+                              ),
                             ),
-                          ),
-                        );
-                      }
-
-                      final messages = snap.data ?? [];
-
-                      _myMessageCount = messages
-                          .where(
-                            (m) =>
-                                m.senderId == widget.currentUserId &&
-                                !m.isDeleted,
-                          )
-                          .length;
-
-                      if (messages.isEmpty) {
-                        return _buildEmptyState(cs, tt);
-                      }
-
-                      WidgetsBinding.instance.addPostFrameCallback(
-                        (_) => _scrollToBottom(),
-                      );
-
-                      return ListView.builder(
-                        controller: _scrollController,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 16,
-                        ),
-                        itemCount: messages.length,
-                        addAutomaticKeepAlives: false,
-                        addRepaintBoundaries: true,
-                        itemBuilder: (context, i) {
-                          final msg = messages[i];
-                          final isMe = msg.senderId == widget.currentUserId;
-                          final showSenderLabel =
-                              !isMe &&
-                              _isGroup &&
-                              (i == 0 ||
-                                  messages[i - 1].senderId != msg.senderId);
-                          final isFirst =
-                              i == 0 ||
-                              messages[i - 1].senderId != msg.senderId;
-                          final isLast =
-                              i == messages.length - 1 ||
-                              messages[i + 1].senderId != msg.senderId;
-
-                          return _ChatBubble(
-                            key: ValueKey(msg.id),
-                            msg: msg,
-                            isMe: isMe,
-                            isFirst: isFirst,
-                            isLast: isLast,
-                            showSenderLabel: showSenderLabel,
-                            isGroup: _isGroup,
-                            cs: cs,
-                            tt: tt,
-                            downloadingFiles: _downloadingFiles,
-                            onDelete: () => _confirmDelete(msg),
-                            onDownload: () => _downloadFile(msg),
-                            onTapSender: () => _openUserProfile(msg.senderId),
                           );
-                        },
-                      );
-                    },
+                        }
+
+                        final messages = snap.data ?? [];
+
+                        _myMessageCount = messages
+                            .where(
+                              (m) =>
+                                  m.senderId == widget.currentUserId &&
+                                  !m.isDeleted,
+                            )
+                            .length;
+
+                        if (messages.isEmpty) {
+                          return _buildEmptyState(cs, tt);
+                        }
+
+                        WidgetsBinding.instance.addPostFrameCallback(
+                          (_) => _scrollToBottom(),
+                        );
+
+                        return ListView.builder(
+                          controller: _scrollController,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 16,
+                          ),
+                          itemCount: messages.length,
+                          addAutomaticKeepAlives: false,
+                          addRepaintBoundaries: true,
+                          itemBuilder: (context, i) {
+                            final msg = messages[i];
+                            final isMe = msg.senderId == widget.currentUserId;
+                            final showSenderLabel =
+                                !isMe &&
+                                _isGroup &&
+                                (i == 0 ||
+                                    messages[i - 1].senderId != msg.senderId);
+                            final isFirst =
+                                i == 0 ||
+                                messages[i - 1].senderId != msg.senderId;
+                            final isLast =
+                                i == messages.length - 1 ||
+                                messages[i + 1].senderId != msg.senderId;
+              
+                            return ChatBubble(
+                              key: ValueKey(msg.id),
+                              msg: msg,
+                              isMe: isMe,
+                              isFirst: isFirst,
+                              isLast: isLast,
+                              showSenderLabel: showSenderLabel,
+                              isGroup: _isGroup,
+                              cs: cs,
+                              tt: tt,
+                              downloadingFiles: _downloadingFiles,
+                              onDelete: () => _confirmDelete(msg),
+                              onDownload: () => _downloadFile(msg),
+                              onTapSender: () => _openUserProfile(msg.senderId),
+                            );
+                          },
+                        );
+                      },
+                    ),
                   ),
-                ),
-                if (_typingUser != null)
-                  RepaintBoundary(child: _buildTypingIndicator(cs, tt)),
-                if (!_isBanned &&
-                    _otherUserExists != false &&
-                    !_isFriend &&
-                    _isFriendLoaded &&
-                    !_isGroup)
-                  RepaintBoundary(child: _buildLimitBar(cs, tt)),
-                if (_isAttachMenuOpen && !_inputDisabled)
-                  RepaintBoundary(child: _buildAttachMenu(cs, tt)),
-                RepaintBoundary(child: _buildInputBar(context, cs, tt)),
-              ],
+                  if (_typingUser != null)
+                    RepaintBoundary(child: _buildTypingIndicator(cs, tt)),
+                  if (!_isBanned &&
+                      _otherUserExists != false &&
+                      !_isFriend &&
+                      _isFriendLoaded &&
+                      !_isGroup)
+                    RepaintBoundary(child: _buildLimitBar(cs, tt)),
+                  if (_isAttachMenuOpen && !_inputDisabled)
+                    RepaintBoundary(child: _buildAttachMenu(cs, tt)),
+                  RepaintBoundary(child: _buildInputBar(context, cs, tt)),
+                ],
+              ),
             ),
           ),
         );
@@ -746,7 +752,7 @@ class _ChatScreenState extends State<ChatScreen> {
             icon: Icon(Icons.video_call_rounded, size: 20, color: cs.onSurface),
           ),
         ],
-        _AppBarIconButton(
+        AppBarIconButton(
           icon: Icons.tune_rounded,
           onTap: () => Navigator.push(
             context,
@@ -1017,7 +1023,7 @@ class _ChatScreenState extends State<ChatScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _AttachItem(
+          AttachItem(
             icon: Icons.photo_library_rounded,
             label: 'Gallery',
             color: Colors.purple,
@@ -1026,7 +1032,7 @@ class _ChatScreenState extends State<ChatScreen> {
               _pickAndSendImage();
             },
           ),
-          _AttachItem(
+          AttachItem(
             icon: Icons.camera_alt_rounded,
             label: 'Camera',
             color: Colors.blue,
@@ -1035,7 +1041,7 @@ class _ChatScreenState extends State<ChatScreen> {
               _pickAndSendImage(source: ImageSource.camera);
             },
           ),
-          _AttachItem(
+          AttachItem(
             icon: Icons.videocam_rounded,
             label: 'Video',
             color: Colors.red,
@@ -1044,7 +1050,7 @@ class _ChatScreenState extends State<ChatScreen> {
               _pickAndSendVideo();
             },
           ),
-          _AttachItem(
+          AttachItem(
             icon: Icons.insert_drive_file_rounded,
             label: 'File',
             color: Colors.orange,
@@ -1091,7 +1097,7 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            _CircleIconButton(
+            CircleIconButton(
               icon: _isAttachMenuOpen ? Icons.close_rounded : Icons.add_rounded,
               onTap: _inputDisabled
                   ? (_isBanned ? _showBanDialog : () {})
@@ -1217,7 +1223,7 @@ class _ChatScreenState extends State<ChatScreen> {
       );
     }
 
-    return _CircleIconButton(
+    return CircleIconButton(
       icon: Icons.mic_rounded,
       onTap: _inputDisabled
           ? (_isBanned ? _showBanDialog : () {})
@@ -1313,7 +1319,7 @@ class _ChatScreenState extends State<ChatScreen> {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _TypingDots(color: cs.onSurface.withOpacity(0.4)),
+              TypingDots(color: cs.onSurface.withOpacity(0.4)),
               const SizedBox(width: 8),
               Text(
                 '$_typingUser is typing',
@@ -1361,548 +1367,12 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 }
 
-class _ChatBubble extends StatelessWidget {
-  const _ChatBubble({
-    super.key,
-    required this.msg,
-    required this.isMe,
-    required this.isFirst,
-    required this.isLast,
-    required this.showSenderLabel,
-    required this.isGroup,
-    required this.cs,
-    required this.tt,
-    required this.downloadingFiles,
-    required this.onDelete,
-    required this.onDownload,
-    required this.onTapSender,
-  });
 
-  final ChatMessageModel msg;
-  final bool isMe;
-  final bool isFirst;
-  final bool isLast;
-  final bool showSenderLabel;
-  final bool isGroup;
-  final ColorScheme cs;
-  final TextTheme tt;
-  final Set<String> downloadingFiles;
-  final VoidCallback onDelete;
-  final VoidCallback onDownload;
-  final VoidCallback onTapSender;
 
-  static const _r = Radius.circular(22);
-  static const _rSmall = Radius.circular(6);
 
-  @override
-  Widget build(BuildContext context) {
-    final isDeleted = msg.isDeleted;
-    final isMedia =
-        msg.type == MessageType.image ||
-        msg.type == MessageType.video ||
-        msg.type == MessageType.audio;
 
-    final bubbleColor = isDeleted
-        ? cs.surfaceContainerLowest
-        : isMe
-        ? cs.primary
-        : cs.surfaceContainerHigh;
 
-    final textColor = isDeleted
-        ? cs.onSurface.withOpacity(0.3)
-        : isMe
-        ? cs.onPrimary
-        : cs.onSurface;
 
-    final borderRadius = BorderRadius.only(
-      topLeft: (!isMe && !isFirst) ? _rSmall : _r,
-      topRight: (isMe && !isFirst) ? _rSmall : _r,
-      bottomLeft: isMe ? _r : (isLast ? _r : _rSmall),
-      bottomRight: isMe ? (isLast ? _r : _rSmall) : _r,
-    );
 
-    return Padding(
-      padding: EdgeInsets.only(top: isFirst ? 8 : 2, bottom: isLast ? 4 : 1),
-      child: Row(
-        mainAxisAlignment: isMe
-            ? MainAxisAlignment.end
-            : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!isMe && isGroup) ...[
-            if (isLast)
-              GestureDetector(
-                onTap: onTapSender,
-                child: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: cs.primaryContainer,
-                  child: Text(
-                    msg.senderUsername.isNotEmpty
-                        ? msg.senderUsername[0].toUpperCase()
-                        : '?',
-                    style: tt.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w700,
-                      color: cs.onPrimaryContainer,
-                    ),
-                  ),
-                ),
-              )
-            else
-              const SizedBox(width: 28),
-            const SizedBox(width: 6),
-          ],
-          Flexible(
-            child: GestureDetector(
-              onLongPress: isMe && !isDeleted ? onDelete : null,
-              child: Container(
-                margin: EdgeInsets.only(
-                  left: isMe ? 72 : 0,
-                  right: isMe ? 0 : 72,
-                ),
-                padding: isMedia
-                    ? EdgeInsets.zero
-                    : const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: isMedia
-                    ? null
-                    : BoxDecoration(
-                        color: bubbleColor,
-                        borderRadius: borderRadius,
-                      ),
-                child: ClipRRect(
-                  borderRadius: isMedia ? borderRadius : BorderRadius.zero,
-                  child: Column(
-                    crossAxisAlignment: isMe
-                        ? CrossAxisAlignment.end
-                        : CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (showSenderLabel && !isMedia)
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 4),
-                          child: GestureDetector(
-                            onTap: onTapSender,
-                            child: Text(
-                              msg.senderUsername,
-                              style: tt.labelSmall?.copyWith(
-                                color: cs.primary,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      _buildContent(
-                        isDeleted,
-                        isMedia,
-                        isMe,
-                        bubbleColor,
-                        borderRadius,
-                        textColor,
-                      ),
-                      if (!isMedia)
-                        Padding(
-                          padding: const EdgeInsets.only(top: 3),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                _formatTime(msg.sentAt),
-                                style: tt.labelSmall?.copyWith(
-                                  fontSize: 10,
-                                  color: isMe
-                                      ? cs.onPrimary.withOpacity(0.55)
-                                      : cs.onSurface.withOpacity(0.35),
-                                ),
-                              ),
-                              if (isMe) ...[
-                                const SizedBox(width: 3),
-                                _StatusIcon(status: msg.status, cs: cs),
-                              ],
-                            ],
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
-  Widget _buildContent(
-    bool isDeleted,
-    bool isMedia,
-    bool isMe,
-    Color bubbleColor,
-    BorderRadius borderRadius,
-    Color textColor,
-  ) {
-    if (isDeleted) {
-      return Text(
-        msg.content,
-        style: tt.bodyMedium?.copyWith(
-          color: textColor,
-          fontStyle: FontStyle.italic,
-        ),
-      );
-    }
 
-    switch (msg.type) {
-      case MessageType.image:
-        return ImageMessageBubble(message: msg, isMe: isMe);
-
-      case MessageType.audio:
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            color: bubbleColor,
-            borderRadius: borderRadius,
-          ),
-          child: AudioMessageBubble(message: msg, isMe: isMe),
-        );
-
-      case MessageType.video:
-        return VideoMessageBubble(message: msg, isMe: isMe);
-
-      case MessageType.file:
-        return _FileMessageContent(
-          msg: msg,
-          isMe: isMe,
-          cs: cs,
-          tt: tt,
-          bubbleColor: bubbleColor,
-          borderRadius: borderRadius,
-          isDownloading: downloadingFiles.contains(
-            msg.id ?? msg.mediaUrl ?? '',
-          ),
-          onDownload: onDownload,
-        );
-
-      default:
-        return Text(
-          msg.content,
-          style: tt.bodyMedium?.copyWith(color: textColor),
-        );
-    }
-  }
-
-  String _formatTime(DateTime dt) {
-    final h = dt.hour.toString().padLeft(2, '0');
-    final m = dt.minute.toString().padLeft(2, '0');
-    return '$h:$m';
-  }
-}
-
-class _FileMessageContent extends StatelessWidget {
-  const _FileMessageContent({
-    required this.msg,
-    required this.isMe,
-    required this.cs,
-    required this.tt,
-    required this.bubbleColor,
-    required this.borderRadius,
-    required this.isDownloading,
-    required this.onDownload,
-  });
-
-  final ChatMessageModel msg;
-  final bool isMe;
-  final ColorScheme cs;
-  final TextTheme tt;
-  final Color bubbleColor;
-  final BorderRadius borderRadius;
-  final bool isDownloading;
-  final VoidCallback onDownload;
-
-  @override
-  Widget build(BuildContext context) {
-    final name = msg.mediaFileName ?? 'File';
-    final ext = name.contains('.')
-        ? name.split('.').last.toUpperCase()
-        : 'FILE';
-    final size = msg.mediaFileSize != null
-        ? _formatFileSize(msg.mediaFileSize!)
-        : '';
-    final hasUrl = msg.mediaUrl?.isNotEmpty ?? false;
-
-    return GestureDetector(
-      onTap: hasUrl && !isDownloading ? onDownload : null,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          color: bubbleColor,
-          borderRadius: borderRadius,
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isMe
-                    ? Colors.white.withOpacity(0.18)
-                    : cs.primaryContainer,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  ext,
-                  style: TextStyle(
-                    fontSize: 9,
-                    fontWeight: FontWeight.w800,
-                    color: isMe ? Colors.white : cs.onPrimaryContainer,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 10),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    name,
-                    style: tt.bodySmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: isMe ? cs.onPrimary : cs.onSurface,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (size.isNotEmpty)
-                    Text(
-                      size,
-                      style: tt.labelSmall?.copyWith(
-                        color: isMe
-                            ? cs.onPrimary.withOpacity(0.6)
-                            : cs.onSurfaceVariant,
-                        fontSize: 10,
-                      ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            if (hasUrl)
-              SizedBox(
-                width: 28,
-                height: 28,
-                child: isDownloading
-                    ? Padding(
-                        padding: const EdgeInsets.all(4),
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: isMe ? cs.onPrimary : cs.primary,
-                        ),
-                      )
-                    : Icon(
-                        Icons.download_rounded,
-                        size: 22,
-                        color: isMe
-                            ? cs.onPrimary.withOpacity(0.8)
-                            : cs.primary,
-                      ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatFileSize(int bytes) {
-    if (bytes < 1024) return '${bytes}B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)}KB';
-    }
-    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)}MB';
-  }
-}
-
-class _StatusIcon extends StatelessWidget {
-  const _StatusIcon({required this.status, required this.cs});
-
-  final MessageStatus status;
-  final ColorScheme cs;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = cs.onPrimary.withOpacity(0.55);
-    switch (status) {
-      case MessageStatus.sending:
-        return SizedBox(
-          width: 10,
-          height: 10,
-          child: CircularProgressIndicator(strokeWidth: 1.5, color: color),
-        );
-      case MessageStatus.sent:
-        return Icon(Icons.check_rounded, size: 12, color: color);
-      case MessageStatus.delivered:
-        return Icon(Icons.done_all_rounded, size: 12, color: color);
-      case MessageStatus.read:
-        return Icon(Icons.done_all_rounded, size: 12, color: cs.onPrimary);
-      case MessageStatus.failed:
-        return Icon(Icons.error_outline_rounded, size: 12, color: cs.error);
-    }
-  }
-}
-
-class _AppBarIconButton extends StatelessWidget {
-  const _AppBarIconButton({
-    required this.icon,
-    required this.onTap,
-    required this.cs,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final ColorScheme cs;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 38,
-        height: 38,
-        margin: const EdgeInsets.symmetric(horizontal: 2),
-        decoration: BoxDecoration(
-          color: cs.surfaceContainerHighest.withOpacity(0.6),
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 19, color: cs.onSurface),
-      ),
-    );
-  }
-}
-
-class _CircleIconButton extends StatelessWidget {
-  const _CircleIconButton({
-    required this.icon,
-    required this.onTap,
-    required this.backgroundColor,
-    required this.iconColor,
-    this.size = 44,
-  });
-
-  final IconData icon;
-  final VoidCallback onTap;
-  final Color backgroundColor;
-  final Color iconColor;
-  final double size;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          shape: BoxShape.circle,
-        ),
-        child: Icon(icon, size: 22, color: iconColor),
-      ),
-    );
-  }
-}
-
-class _TypingDots extends StatefulWidget {
-  const _TypingDots({required this.color});
-  final Color color;
-
-  @override
-  State<_TypingDots> createState() => _TypingDotsState();
-}
-
-class _TypingDotsState extends State<_TypingDots>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _ctrl;
-
-  @override
-  void initState() {
-    super.initState();
-    _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1200),
-    )..repeat();
-  }
-
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _ctrl,
-      builder: (_, _) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: List.generate(3, (i) {
-          final offset = ((_ctrl.value * 3) - i).clamp(0.0, 1.0);
-          final bounce = offset < 0.5 ? offset * 2 : (1 - offset) * 2;
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-            width: 5,
-            height: 5 + (bounce * 3),
-            decoration: BoxDecoration(
-              color: widget.color,
-              borderRadius: BorderRadius.circular(4),
-            ),
-          );
-        }),
-      ),
-    );
-  }
-}
-
-class _AttachItem extends StatelessWidget {
-  const _AttachItem({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final Color color;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final tt = Theme.of(context).textTheme;
-    final cs = Theme.of(context).colorScheme;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.12),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 7),
-          Text(
-            label,
-            style: tt.labelSmall?.copyWith(
-              color: cs.onSurfaceVariant,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}

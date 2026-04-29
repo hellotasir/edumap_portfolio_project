@@ -1,10 +1,10 @@
 // features/app/widgets/material_widget.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/core/consts/app_details.dart';
-import 'package:flutter_education_app/core/theme/app_theme.dart';
-import 'package:flutter_education_app/features/app/views/view_models/app_theme_provider.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/network_widget.dart';
+import 'package:edumap_portfolio_project/core/consts/app_details.dart';
+import 'package:edumap_portfolio_project/core/theme/app_theme.dart';
+import 'package:edumap_portfolio_project/features/app/views/view_models/app_theme_provider.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 
 class MaterialWidget extends ConsumerWidget {
   final Widget child;

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
 
 enum ErrorType { network, server, notFound, unknown }
 
@@ -88,8 +87,7 @@ class _ErrorScreenState extends State<ErrorScreen>
     final meta = _meta;
     final theme = Theme.of(context);
 
-    return MaterialWidget(
-      child: Scaffold(
+    return Scaffold(
         body: SafeArea(
           child: FadeTransition(
             opacity: _fadeIn,
@@ -158,7 +156,6 @@ class _ErrorScreenState extends State<ErrorScreen>
               ),
             ),
           ),
-        ),
       ),
     );
   }

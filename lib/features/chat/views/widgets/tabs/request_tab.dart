@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
-import 'package:flutter_education_app/features/chat/models/friend_request_model.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/avatar.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/empty_state.dart';
+import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/friend_request_model.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/shared/avatar.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/shared/empty_state.dart';
 import 'package:timeago/timeago.dart' as timeago;
 
 class RequestsTab extends StatelessWidget {
@@ -21,8 +21,26 @@ class RequestsTab extends StatelessWidget {
     return StreamBuilder<List<FriendRequestModel>>(
       stream: chatRepository.watchIncomingRequests(currentUserId),
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
+        // Show loader while waiting OR while stream is active but data hasn't
+        // arrived yet (Firestore cold-start gives active + null before first emit)
+        if (snap.connectionState == ConnectionState.waiting ||
+            (snap.connectionState == ConnectionState.active &&
+                !snap.hasData &&
+                snap.error == null)) {
           return const Center(child: CircularProgressIndicator.adaptive());
+        }
+
+        if (snap.hasError) {
+          debugPrint('[RequestsTab] stream error: ${snap.error}');
+          return const Center(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Text(
+                'Could not load requests. Please check your connection.',
+                textAlign: TextAlign.center,
+              ),
+            ),
+          );
         }
 
         final requests = snap.data ?? [];
@@ -64,13 +82,20 @@ class _RequestTileState extends State<_RequestTile> {
   bool _responding = false;
 
   Future<void> _respond(FriendRequestStatus status) async {
-    if (_responding || widget.request.id == null) return;
+    final requestId = widget.request.id;
+    if (_responding || requestId == null) return;
     setState(() => _responding = true);
     try {
-      await widget.chatRepository.respondToFriendRequest(
-        widget.request.id!,
-        status,
-      );
+      await widget.chatRepository.respondToFriendRequest(requestId, status);
+    } catch (e) {
+      debugPrint('[RequestsTab] respond error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Something went wrong. Please try again.'),
+          ),
+        );
+      }
     } finally {
       if (mounted) setState(() => _responding = false);
     }

@@ -1,14 +1,14 @@
 // ignore_for_file: use_build_context_synchronously
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/services/local/fcm_token_service.dart';
-import 'package:flutter_education_app/core/services/notification/firestore_listener_service.dart';
-import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/services/local/fcm_token_service.dart';
+import 'package:edumap_portfolio_project/core/services/notification/firestore_listener_service.dart';
+import 'package:edumap_portfolio_project/features/auth/views/view_models/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/features/app/views/screens/home_screen.dart';
-import 'package:flutter_education_app/features/auth/views/screens/login_screen.dart';
-import 'package:flutter_education_app/features/app/views/screens/error_screen.dart';
-import 'package:flutter_education_app/core/widgets/loading_widget.dart';
+import 'package:edumap_portfolio_project/features/app/views/screens/home_screen.dart';
+import 'package:edumap_portfolio_project/features/auth/views/screens/login_screen.dart';
+import 'package:edumap_portfolio_project/features/app/views/screens/error_screen.dart';
+import 'package:edumap_portfolio_project/core/widgets/loading_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

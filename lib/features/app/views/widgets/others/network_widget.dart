@@ -1,13 +1,19 @@
 import 'dart:async';
+
 import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:edumap_portfolio_project/core/services/local/connectivity_service.dart';
+import 'package:edumap_portfolio_project/features/app/views/screens/error_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/local/connectivity_service.dart';
-import '../../screens/error_screen.dart';
 
 class NetworkWidget extends StatefulWidget {
   final Widget child;
+  final bool showLoadingOnInitial;
 
-  const NetworkWidget({super.key, required this.child});
+  const NetworkWidget({
+    super.key,
+    required this.child,
+    this.showLoadingOnInitial = true,
+  });
 
   @override
   State<NetworkWidget> createState() => _NetworkWidgetState();
@@ -16,51 +22,60 @@ class NetworkWidget extends StatefulWidget {
 class _NetworkWidgetState extends State<NetworkWidget> {
   final ConnectivityService _service = ConnectivityService();
 
-  StreamSubscription<List<ConnectivityResult>>? _sub;
+  late StreamSubscription<List<ConnectivityResult>> _subscription;
 
-  bool _isOnline = true;
-  bool _loading = true;
+  Future<bool>? _connectivityFuture;
 
   @override
   void initState() {
     super.initState();
-    _check();
+    _triggerCheck();
 
-    _sub = _service.connectivityStream.listen((results) {
-      final online = results.isNotEmpty;
-
-      if (mounted) {
-        setState(() => _isOnline = online);
-      }
+    _subscription = _service.connectivityStream.listen((_) {
+      _triggerCheck(); 
     });
   }
 
-  Future<void> _check() async {
-    final online = await _service.isOnline();
-    if (!mounted) return;
-
+  void _triggerCheck() {
     setState(() {
-      _isOnline = online;
-      _loading = false;
+      _connectivityFuture = _service.isOnline();
     });
+  }
+
+  Future<void> _handleRetry() async {
+    _triggerCheck();
   }
 
   @override
   void dispose() {
-    _sub?.cancel();
+    _subscription.cancel();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
-    }
-
-    if (!_isOnline) {
-      return ErrorScreen(errorType: ErrorType.network, onRetry: _check);
-    }
-
-    return widget.child;
+    return Scaffold(
+      body: FutureBuilder<bool>(
+        future: _connectivityFuture,
+        builder: (context, snapshot) {
+          
+          final isOnline = snapshot.data == true;
+        
+          return AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: isOnline
+                ? KeyedSubtree(
+                    key: const ValueKey('child_widget'),
+                    child: widget.child,
+                  )
+                : ErrorScreen(
+                    key: const ValueKey('error_screen'),
+                    errorType: ErrorType.network,
+                    onRetry: _handleRetry,
+                  ),
+          );
+        },
+      ),
+    );
   }
 }

@@ -1,24 +1,23 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/ai/views/screens/ai_assistant_screen.dart';
+import 'package:edumap_portfolio_project/features/ai/views/screens/ai_assistant_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
-import 'package:flutter_education_app/core/consts/app_details.dart';
-import 'package:flutter_education_app/core/services/local/user_location_service.dart';
-import 'package:flutter_education_app/core/widgets/loading_widget.dart';
-import 'package:flutter_education_app/features/app/views/widgets/home_empty_profile_state.dart';
-import 'package:flutter_education_app/features/app/views/widgets/home_empty_state.dart';
-import 'package:flutter_education_app/features/app/views/widgets/home_profile_avatar.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/inbox_widget.dart';
-import 'package:flutter_education_app/features/location/views/screens/my_location_screen.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
-import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
+import 'package:edumap_portfolio_project/core/consts/app_details.dart';
+import 'package:edumap_portfolio_project/core/services/local/user_location_service.dart';
+import 'package:edumap_portfolio_project/core/widgets/loading_widget.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/home_empty_profile_state.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/home_empty_state.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/home_profile_avatar.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/inbox_widget.dart';
+import 'package:edumap_portfolio_project/features/location/views/screens/my_location_screen.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/repositories/profile_repository.dart';
+import 'package:edumap_portfolio_project/features/profile/views/screens/profile_screen.dart';
 
 enum _HomeTab {
  
@@ -170,44 +169,43 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             profile == null;
         final hasError = _profileError != null || snapshot.hasError;
 
-        return Scaffold(
-          appBar: AppBar(
-            scrolledUnderElevation: 2,
-            elevation: 0,
-            leadingWidth: 56,
-            leading: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 8, 0, 8),
-              child: Image.asset(
-                isDark
-                    ? 'assets/edumap-black-transparent-icon.png'
-                    : 'assets/edumap-transparent-icon.png',
-                fit: BoxFit.contain,
-              ),
-            ),
-            title: Text(
-              appName,
-              style: theme.textTheme.titleLarge?.copyWith(
-                fontWeight: FontWeight.w700,
-                letterSpacing: -0.3,
-              ),
-            ),
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: IconButton(
-                  tooltip: 'Profile',
-                  onPressed: _openProfile,
-                  icon: HomeProfileAvatar(
-                    isLoading: isFirstLoad,
-                    profile: profile,
-                  ),
+        return NetworkWidget(
+          child: Scaffold(
+            appBar: AppBar(
+              scrolledUnderElevation: 2,
+              elevation: 0,
+              leadingWidth: 56,
+              leading: Padding(
+                padding: const EdgeInsets.fromLTRB(12, 8, 0, 8),
+                child: Image.asset(
+                  isDark
+                      ? 'assets/edumap-black-transparent-icon.png'
+                      : 'assets/edumap-transparent-icon.png',
+                  fit: BoxFit.contain,
                 ),
               ),
-            ],
-          ),
-          body: MfaWidget(
-            authRepository: AuthRepository(),
-            child: AnimatedSwitcher(
+              title: Text(
+                appName,
+                style: theme.textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: -0.3,
+                ),
+              ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: IconButton(
+                    tooltip: 'Profile',
+                    onPressed: _openProfile,
+                    icon: HomeProfileAvatar(
+                      isLoading: isFirstLoad,
+                      profile: profile,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            body: AnimatedSwitcher(
               duration: const Duration(milliseconds: 280),
               switchInCurve: Curves.easeOut,
               switchOutCurve: Curves.easeIn,
@@ -219,20 +217,21 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 colorScheme: colorScheme,
               ),
             ),
-          ),
-          bottomNavigationBar: NavigationBar(
-            selectedIndex: _currentTab.index,
-            onDestinationSelected: _onTabTapped,
-            labelBehavior: NavigationDestinationLabelBehavior.onlyShowSelected,
-            destinations: _HomeTab.values
-                .map(
-                  (tab) => NavigationDestination(
-                    icon: Icon(tab.icon),
-                    selectedIcon: Icon(tab.selectedIcon),
-                    label: tab.label,
-                  ),
-                )
-                .toList(),
+            bottomNavigationBar: NavigationBar(
+              selectedIndex: _currentTab.index,
+              onDestinationSelected: _onTabTapped,
+              labelBehavior:
+                  NavigationDestinationLabelBehavior.onlyShowSelected,
+              destinations: _HomeTab.values
+                  .map(
+                    (tab) => NavigationDestination(
+                      icon: Icon(tab.icon),
+                      selectedIcon: Icon(tab.selectedIcon),
+                      label: tab.label,
+                    ),
+                  )
+                  .toList(),
+            ),
           ),
         );
       },

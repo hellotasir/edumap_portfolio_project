@@ -209,7 +209,8 @@ class MediaModel {
         bucket: map['bucket'] ?? '',
         mimeType: map['mime_type'] ?? '',
         size: (map['size'] ?? 0) as int,
-        uploadedAt: (map['uploaded_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+        uploadedAt:
+            (map['uploaded_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       );
 
   Map<String, dynamic> toMap() => {

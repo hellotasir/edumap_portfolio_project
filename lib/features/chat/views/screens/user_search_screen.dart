@@ -1,9 +1,10 @@
 import 'dart:async';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
-import 'package:flutter_education_app/features/chat/models/conversation_model.dart';
-import 'package:flutter_education_app/features/chat/models/friend_request_model.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/conversation_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/friend_request_model.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
 import 'chat_screen.dart';
 
 class UserSearchScreen extends StatefulWidget {
@@ -136,69 +137,73 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Padding(
-          padding: const EdgeInsets.only(right: 12),
-          child: Container(
-            height: 42,
-            decoration: BoxDecoration(
-              color: colorScheme.surfaceContainerHighest,
-              borderRadius: BorderRadius.circular(28),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Row(
-              children: [
-                Icon(
-                  Icons.search_rounded,
-                  size: 20,
-                  color: colorScheme.onSurface.withValues(alpha: 0.4),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    autofocus: true,
-                    style: textTheme.bodyMedium,
-                    decoration: InputDecoration(
-                      hintText: widget.isGroupAddMode
-                          ? 'Search users to add…'
-                          : 'Search by username…',
-                      hintStyle: textTheme.bodyMedium?.copyWith(
+    return NetworkWidget(
+      child: Scaffold(
+        appBar: AppBar(
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: Container(
+              height: 42,
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.search_rounded,
+                    size: 20,
+                    color: colorScheme.onSurface.withValues(alpha: 0.4),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: _onSearchChanged,
+                      autofocus: true,
+                      style: textTheme.bodyMedium,
+                      decoration: InputDecoration(
+                        hintText: widget.isGroupAddMode
+                            ? 'Search users to add…'
+                            : 'Search by username…',
+                        hintStyle: textTheme.bodyMedium?.copyWith(
+                          color: colorScheme.onSurface.withValues(alpha: 0.4),
+                        ),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(
+                          vertical: 11,
+                        ),
+                        isDense: true,
+                      ),
+                    ),
+                  ),
+                  if (_searchController.text.isNotEmpty)
+                    GestureDetector(
+                      onTap: () {
+                        _searchController.clear();
+                        setState(() => _results = []);
+                      },
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: 18,
                         color: colorScheme.onSurface.withValues(alpha: 0.4),
                       ),
-                      border: InputBorder.none,
-                      enabledBorder: InputBorder.none,
-                      focusedBorder: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 11),
-                      isDense: true,
                     ),
-                  ),
-                ),
-                if (_searchController.text.isNotEmpty)
-                  GestureDetector(
-                    onTap: () {
-                      _searchController.clear();
-                      setState(() => _results = []);
-                    },
-                    child: Icon(
-                      Icons.close_rounded,
-                      size: 18,
-                      color: colorScheme.onSurface.withValues(alpha: 0.4),
-                    ),
-                  ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
+        body: _buildBody(colorScheme, textTheme),
       ),
-      body: _buildBody(colorScheme, textTheme),
     );
   }
 
@@ -610,6 +615,7 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
+
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
     required this.icon,
@@ -670,3 +676,4 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
+

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/ai/views/widgets/suggestion_tile.dart';
+import 'package:edumap_portfolio_project/features/ai/views/widgets/suggestion_tile.dart';
 
 class EmptyState extends StatelessWidget {
   const EmptyState({super.key, required this.onSend});

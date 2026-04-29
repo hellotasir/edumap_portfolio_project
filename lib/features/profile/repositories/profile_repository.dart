@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/app/repositories/database_repository.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/app/repositories/database_repository.dart';
 
 class ProfileRepository implements DatabaseRepository<ProfileModel> {
   @override
@@ -24,9 +24,12 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
           [],
       isVerified: data['is_verified'] ?? false,
       status: data['status'] ?? 'active',
-      createdAt: (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      updatedAt: (data['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      lastLogin: (data['last_login'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      createdAt:
+          (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      updatedAt:
+          (data['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      lastLogin:
+          (data['last_login'] as Timestamp?)?.toDate() ?? DateTime.now(),
       profile: _parseProfile(data['profile']),
       studentProfile: _parseStudent(data['student_profile']),
       instructorProfile: _parseInstructor(data['instructor_profile']),
@@ -36,23 +39,23 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
 
   @override
   Map<String, dynamic> toMap(ProfileModel model) => {
-    'user_id': model.userId,
-    'username': model.username,
-    'email': model.email,
-    'phone': model.phone,
-    'password_hash': model.passwordHash,
-    'current_mode': model.currentMode,
-    'available_modes': model.availableModes,
-    'is_verified': model.isVerified,
-    'status': model.status,
-    'created_at': Timestamp.fromDate(model.createdAt),
-    'updated_at': Timestamp.fromDate(model.updatedAt),
-    'last_login': Timestamp.fromDate(model.lastLogin),
-    'profile': _profileToMap(model.profile),
-    'student_profile': _studentToMap(model.studentProfile),
-    'instructor_profile': _instructorToMap(model.instructorProfile),
-    'system': _systemToMap(model.system),
-  };
+        'user_id': model.userId,
+        'username': model.username,
+        'email': model.email,
+        'phone': model.phone,
+        'password_hash': model.passwordHash,
+        'current_mode': model.currentMode,
+        'available_modes': model.availableModes,
+        'is_verified': model.isVerified,
+        'status': model.status,
+        'created_at': Timestamp.fromDate(model.createdAt),
+        'updated_at': Timestamp.fromDate(model.updatedAt),
+        'last_login': Timestamp.fromDate(model.lastLogin),
+        'profile': _profileToMap(model.profile),
+        'student_profile': _studentToMap(model.studentProfile),
+        'instructor_profile': _instructorToMap(model.instructorProfile),
+        'system': _systemToMap(model.system),
+      };
 
   ProfileInfo _parseProfile(Map<String, dynamic>? data) {
     data ??= {};
@@ -112,46 +115,47 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
     data ??= {};
     return SystemInfo(
       isBanned: data['flags']?['is_banned'] ?? false,
-      isFeaturedInstructor: data['flags']?['is_featured_instructor'] ?? false,
+      isFeaturedInstructor:
+          data['flags']?['is_featured_instructor'] ?? false,
     );
   }
 
   Map<String, dynamic> _profileToMap(ProfileInfo p) => {
-    'full_name': p.fullName,
-    'profile_photo': p.profilePhoto,
-    'cover_photo': p.coverPhoto,
-    'bio': p.bio,
-    'gender': p.gender,
-    'location': {
-      'country': p.location.country,
-      'city': p.location.city,
-      'timezone': p.location.timezone,
-    },
-    'languages': p.languages,
-    'social_links': {
-      'linkedin': p.socialLinks.linkedin,
-      'github': p.socialLinks.github,
-      'website': p.socialLinks.website,
-    },
-  };
+        'full_name': p.fullName,
+        'profile_photo': p.profilePhoto,
+        'cover_photo': p.coverPhoto,
+        'bio': p.bio,
+        'gender': p.gender,
+        'location': {
+          'country': p.location.country,
+          'city': p.location.city,
+          'timezone': p.location.timezone,
+        },
+        'languages': p.languages,
+        'social_links': {
+          'linkedin': p.socialLinks.linkedin,
+          'github': p.socialLinks.github,
+          'website': p.socialLinks.website,
+        },
+      };
 
   Map<String, dynamic> _studentToMap(StudentProfile s) => {
-    'is_active': s.isActive,
-    'interests': s.interests,
-    'current_level': s.currentLevel,
-  };
+        'is_active': s.isActive,
+        'interests': s.interests,
+        'current_level': s.currentLevel,
+      };
 
   Map<String, dynamic> _instructorToMap(InstructorProfile i) => {
-    'is_active': i.isActive,
-    'headline': i.headline,
-    'expertise': i.expertise,
-    'years_of_experience': i.yearsOfExperience,
-  };
+        'is_active': i.isActive,
+        'headline': i.headline,
+        'expertise': i.expertise,
+        'years_of_experience': i.yearsOfExperience,
+      };
 
   Map<String, dynamic> _systemToMap(SystemInfo s) => {
-    'flags': {
-      'is_banned': s.isBanned,
-      'is_featured_instructor': s.isFeaturedInstructor,
-    },
-  };
+        'flags': {
+          'is_banned': s.isBanned,
+          'is_featured_instructor': s.isFeaturedInstructor,
+        },
+      };
 }

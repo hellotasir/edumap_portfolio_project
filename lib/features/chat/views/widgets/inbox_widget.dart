@@ -1,16 +1,16 @@
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/mfa_widget.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/network_widget.dart';
-import 'package:flutter_education_app/features/chat/models/conversation_model.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
-import 'package:flutter_education_app/features/chat/views/screens/chat_group_screen.dart';
-import 'package:flutter_education_app/features/chat/views/screens/chat_screen.dart';
-import 'package:flutter_education_app/features/chat/views/screens/user_search_screen.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/tabs/chat_tab.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/tabs/friends_tab.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/tabs/request_tab.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/features/chat/models/conversation_model.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/features/chat/views/screens/chat_group_screen.dart';
+import 'package:edumap_portfolio_project/features/chat/views/screens/chat_screen.dart';
+import 'package:edumap_portfolio_project/features/chat/views/screens/user_search_screen.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/tabs/chat_tab.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/tabs/friends_tab.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/tabs/request_tab.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 
 class InboxWidget extends StatefulWidget {
   const InboxWidget({
@@ -33,7 +33,6 @@ class InboxWidget extends StatefulWidget {
 class _InboxWidgetState extends State<InboxWidget>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  final AuthRepository _authRepo = AuthRepository();
 
   @override
   void initState() {
@@ -84,13 +83,12 @@ class _InboxWidgetState extends State<InboxWidget>
 
     return NetworkWidget(
       child: MfaWidget(
-        authRepository: _authRepo,
+        authRepository: AuthRepository(),
         child: Scaffold(
           body: SafeArea(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-               
                 Padding(
                   padding: const EdgeInsets.fromLTRB(24, 20, 20, 8),
                   child: Row(
@@ -152,7 +150,6 @@ class _InboxWidgetState extends State<InboxWidget>
                   ),
                 ),
 
-              
                 Padding(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 16,
@@ -193,7 +190,7 @@ class _InboxWidgetState extends State<InboxWidget>
                       overlayColor: WidgetStateProperty.all(Colors.transparent),
                       tabs: const [
                         Tab(text: 'Chats'),
-                       
+
                         Tab(text: 'Friends'),
                         Tab(text: 'Requests'),
                       ],
@@ -201,7 +198,6 @@ class _InboxWidgetState extends State<InboxWidget>
                   ),
                 ),
 
-               
                 Expanded(
                   child: TabBarView(
                     controller: _tabController,
@@ -211,7 +207,7 @@ class _InboxWidgetState extends State<InboxWidget>
                         chatRepository: widget.chatRepository,
                         onOpenChat: _openChat,
                       ),
-                    
+
                       FriendsTab(
                         currentUserId: widget.currentUserId,
                         currentUsername: widget.currentUsername,

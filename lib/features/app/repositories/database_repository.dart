@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/cloud/database_service.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
 
 abstract class DatabaseRepository<T> {
   List<String> get collectionPath;

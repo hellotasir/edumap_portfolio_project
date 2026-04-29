@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
-import 'package:flutter_education_app/features/location/views/widgets/category_chip.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/category_chip.dart';
 
 import 'error_banner.dart';
 

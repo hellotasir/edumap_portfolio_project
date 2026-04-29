@@ -1,11 +1,13 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use
 
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/mfa_widget.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/core/services/cloud/database_service.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/repositories/profile_repository.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key, required this.profile});
@@ -275,175 +277,182 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         final ok = await _confirmDiscard();
         if (ok && mounted) Navigator.pop(context);
       },
-      child: MaterialWidget(
-        child: Scaffold(
-          appBar: AppBar(
-            leading: IconButton(
-              icon: const Icon(Icons.chevron_left_rounded),
-              onPressed: _handlePop,
-            ),
-            title: const Text('Edit Profile'),
-            centerTitle: false,
-            elevation: 0,
-            scrolledUnderElevation: 0,
-            actions: [
-              Padding(
-                padding: const EdgeInsets.only(right: 16),
-                child: _saving
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: cs.primary,
-                        ),
-                      )
-                    : AnimatedOpacity(
-                        opacity: _dirty ? 1.0 : 0.4,
-                        duration: const Duration(milliseconds: 200),
-                        child: FilledButton(
-                          onPressed: _dirty ? _save : null,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 22,
-                              vertical: 10,
-                            ),
-                            shape: const StadiumBorder(),
-                            visualDensity: VisualDensity.compact,
-                          ),
-                          child: const Text(
-                            'Save',
-                            style: TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                        ),
-                      ),
+      child: NetworkWidget(
+        child: MfaWidget(
+          authRepository: AuthRepository(),
+          child: Scaffold(
+            appBar: AppBar(
+              leading: IconButton(
+                icon: const Icon(Icons.chevron_left_rounded),
+                onPressed: _handlePop,
               ),
-            ],
-          ),
-          body: Form(
-            key: _formKey,
-            child: ListView(
-              padding: const EdgeInsets.only(bottom: 60),
-              children: [
-                const SizedBox(height: 8),
-                _buildModeSection(cs, tt),
-                _SectionHeader(label: 'Personal Info'),
-                _Field(
-                  label: 'Full Name',
-                  controller: _fullNameCtrl,
-                  hint: 'Your display name',
-                  required: true,
+              title: const Text('Edit Profile'),
+              centerTitle: false,
+              elevation: 0,
+              scrolledUnderElevation: 0,
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: _saving
+                      ? SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: cs.primary,
+                          ),
+                        )
+                      : AnimatedOpacity(
+                          opacity: _dirty ? 1.0 : 0.4,
+                          duration: const Duration(milliseconds: 200),
+                          child: FilledButton(
+                            onPressed: _dirty ? _save : null,
+                            style: FilledButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 22,
+                                vertical: 10,
+                              ),
+                              shape: const StadiumBorder(),
+                              visualDensity: VisualDensity.compact,
+                            ),
+                            child: const Text(
+                              'Save',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ),
                 ),
-                _Field(
-                  label: 'Username',
-                  controller: _usernameCtrl,
-                  hint: 'john_doe',
-                  required: true,
-                  prefixText: '@',
-                ),
-                _Field(
-                  label: 'Bio',
-                  controller: _bioCtrl,
-                  hint: 'A short bio about yourself…',
-                  maxLines: 3,
-                ),
-                _Field(
-                  label: 'Phone',
-                  controller: _phoneCtrl,
-                  hint: '+1 234 567 890',
-                  keyboard: TextInputType.phone,
-                ),
-                _GenderSelector(
-                  value: _gender,
-                  options: _genderOptions,
-                  onChanged: (v) => setState(() {
-                    _gender = v;
-                    _dirty = true;
-                  }),
-                ),
-                _SectionHeader(label: 'Location'),
-                _Field(
-                  label: 'Country',
-                  controller: _countryCtrl,
-                  hint: 'United States',
-                ),
-                _Field(label: 'City', controller: _cityCtrl, hint: 'New York'),
-                _Field(
-                  label: 'Timezone',
-                  controller: _timezoneCtrl,
-                  hint: 'America/New_York',
-                ),
-                _Field(
-                  label: 'Languages',
-                  controller: _languagesCtrl,
-                  hint: 'English, Spanish…',
-                  helperText: 'Comma-separated',
-                ),
-                _SectionHeader(label: 'Social Links'),
-                _Field(
-                  label: 'LinkedIn',
-                  controller: _linkedinCtrl,
-                  hint: 'linkedin.com/in/…',
-                  keyboard: TextInputType.url,
-                  prefixIcon: Icons.work_outline_rounded,
-                ),
-                _Field(
-                  label: 'GitHub',
-                  controller: _githubCtrl,
-                  hint: 'github.com/…',
-                  keyboard: TextInputType.url,
-                  prefixIcon: Icons.code_rounded,
-                ),
-                _Field(
-                  label: 'Website',
-                  controller: _websiteCtrl,
-                  hint: 'https://…',
-                  keyboard: TextInputType.url,
-                  prefixIcon: Icons.language_rounded,
-                ),
-                if (_selectedMode == 'instructor') ...[
-                  _SectionHeader(label: 'Instructor Details'),
+              ],
+            ),
+            body: Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.only(bottom: 60),
+                children: [
+                  const SizedBox(height: 8),
+                  _buildModeSection(cs, tt),
+                  _SectionHeader(label: 'Personal Info'),
                   _Field(
-                    label: 'Headline',
-                    controller: _headlineCtrl,
-                    hint: 'Senior Flutter Engineer',
+                    label: 'Full Name',
+                    controller: _fullNameCtrl,
+                    hint: 'Your display name',
                     required: true,
                   ),
                   _Field(
-                    label: 'Years of Experience',
-                    controller: _yearsCtrl,
-                    hint: '5',
-                    keyboard: TextInputType.number,
-                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    label: 'Username',
+                    controller: _usernameCtrl,
+                    hint: 'john_doe',
+                    required: true,
+                    prefixText: '@',
                   ),
                   _Field(
-                    label: 'Expertise',
-                    controller: _expertiseCtrl,
-                    hint: 'Flutter, Dart, Firebase…',
-                    helperText: 'Comma-separated',
-                    maxLines: 2,
+                    label: 'Bio',
+                    controller: _bioCtrl,
+                    hint: 'A short bio about yourself…',
+                    maxLines: 3,
                   ),
-                ] else ...[
-                  _SectionHeader(label: 'Student Details'),
-                  _LevelSelector(
-                    value: _levelOptions.contains(_levelCtrl.text)
-                        ? _levelCtrl.text
-                        : 'beginner',
-                    options: _levelOptions,
+                  _Field(
+                    label: 'Phone',
+                    controller: _phoneCtrl,
+                    hint: '+1 234 567 890',
+                    keyboard: TextInputType.phone,
+                  ),
+                  _GenderSelector(
+                    value: _gender,
+                    options: _genderOptions,
                     onChanged: (v) => setState(() {
-                      _levelCtrl.text = v;
+                      _gender = v;
                       _dirty = true;
                     }),
                   ),
+                  _SectionHeader(label: 'Location'),
                   _Field(
-                    label: 'Interests',
-                    controller: _interestsCtrl,
-                    hint: 'Flutter, Design, AI…',
-                    helperText: 'Comma-separated',
-                    maxLines: 2,
+                    label: 'Country',
+                    controller: _countryCtrl,
+                    hint: 'United States',
                   ),
+                  _Field(
+                    label: 'City',
+                    controller: _cityCtrl,
+                    hint: 'New York',
+                  ),
+                  _Field(
+                    label: 'Timezone',
+                    controller: _timezoneCtrl,
+                    hint: 'America/New_York',
+                  ),
+                  _Field(
+                    label: 'Languages',
+                    controller: _languagesCtrl,
+                    hint: 'English, Spanish…',
+                    helperText: 'Comma-separated',
+                  ),
+                  _SectionHeader(label: 'Social Links'),
+                  _Field(
+                    label: 'LinkedIn',
+                    controller: _linkedinCtrl,
+                    hint: 'linkedin.com/in/…',
+                    keyboard: TextInputType.url,
+                    prefixIcon: Icons.work_outline_rounded,
+                  ),
+                  _Field(
+                    label: 'GitHub',
+                    controller: _githubCtrl,
+                    hint: 'github.com/…',
+                    keyboard: TextInputType.url,
+                    prefixIcon: Icons.code_rounded,
+                  ),
+                  _Field(
+                    label: 'Website',
+                    controller: _websiteCtrl,
+                    hint: 'https://…',
+                    keyboard: TextInputType.url,
+                    prefixIcon: Icons.language_rounded,
+                  ),
+                  if (_selectedMode == 'instructor') ...[
+                    _SectionHeader(label: 'Instructor Details'),
+                    _Field(
+                      label: 'Headline',
+                      controller: _headlineCtrl,
+                      hint: 'Senior Flutter Engineer',
+                      required: true,
+                    ),
+                    _Field(
+                      label: 'Years of Experience',
+                      controller: _yearsCtrl,
+                      hint: '5',
+                      keyboard: TextInputType.number,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    ),
+                    _Field(
+                      label: 'Expertise',
+                      controller: _expertiseCtrl,
+                      hint: 'Flutter, Dart, Firebase…',
+                      helperText: 'Comma-separated',
+                      maxLines: 2,
+                    ),
+                  ] else ...[
+                    _SectionHeader(label: 'Student Details'),
+                    _LevelSelector(
+                      value: _levelOptions.contains(_levelCtrl.text)
+                          ? _levelCtrl.text
+                          : 'beginner',
+                      options: _levelOptions,
+                      onChanged: (v) => setState(() {
+                        _levelCtrl.text = v;
+                        _dirty = true;
+                      }),
+                    ),
+                    _Field(
+                      label: 'Interests',
+                      controller: _interestsCtrl,
+                      hint: 'Flutter, Design, AI…',
+                      helperText: 'Comma-separated',
+                      maxLines: 2,
+                    ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),

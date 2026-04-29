@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
 import 'package:just_audio/just_audio.dart';
 
 class AudioMessageBubble extends StatefulWidget {

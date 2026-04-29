@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_education_app/features/chat/models/friend_request_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/friend_request_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'notification_service.dart';
 

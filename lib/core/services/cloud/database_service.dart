@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/app/repositories/database_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/app/repositories/database_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DatabaseService<T> {

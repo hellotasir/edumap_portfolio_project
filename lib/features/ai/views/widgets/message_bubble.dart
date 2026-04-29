@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/cloud/ai_chat_service.dart';
-import 'package:flutter_education_app/features/ai/views/widgets/typing_Indicator.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/ai_chat_service.dart';
+import 'package:edumap_portfolio_project/features/ai/views/widgets/typing_Indicator.dart';
 
 class MessageBubble extends StatelessWidget {
   const MessageBubble({super.key, required this.message});

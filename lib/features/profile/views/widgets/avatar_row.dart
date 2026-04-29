@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/state_card.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/state_card.dart';
 
 class AvatarRow extends StatelessWidget {
   const AvatarRow({

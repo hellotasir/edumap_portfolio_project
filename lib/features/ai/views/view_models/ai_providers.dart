@@ -1,8 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_education_app/core/services/cloud/ai_chat_service.dart';
-import 'package:flutter_education_app/features/ai/prompts/ai_prompts.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/ai_chat_service.dart';
+import 'package:edumap_portfolio_project/features/ai/prompts/ai_prompts.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
@@ -123,12 +123,3 @@ class AiChatNotifier extends Notifier<AiChatState> {
 final aiChatNotifierProvider = NotifierProvider<AiChatNotifier, AiChatState>(
   AiChatNotifier.new,
 );
-
-typedef GeminiService = AiChatService;
-typedef GeminiConfig = AiConfig;
-typedef GeminiState = AiChatState;
-typedef GeminiNotifier = AiChatNotifier;
-
-final geminiConfigProvider = aiConfigProvider;
-final geminiServiceProvider = aiChatServiceProvider;
-final geminiNotifierProvider = aiChatNotifierProvider;

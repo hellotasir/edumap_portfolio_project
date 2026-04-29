@@ -1,14 +1,13 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/views/view_models/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/core/widgets/snackbar_widget.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/widgets/snackbar_widget.dart';
 
 class MfaScreen extends ConsumerStatefulWidget {
   const MfaScreen({super.key});
@@ -119,7 +118,7 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
   Widget build(BuildContext context) {
     final state = ref.watch(mfaNotifierProvider);
 
-    return MaterialWidget(
+    return NetworkWidget(
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Two-Factor Authentication'),
@@ -128,14 +127,11 @@ class _MfaScreenState extends ConsumerState<MfaScreen> {
             icon: const Icon(Icons.chevron_left_rounded),
           ),
         ),
-        body: MfaWidget(
-          authRepository: ref.read(authRepositoryProvider),
-          child: SafeArea(
+        body: SafeArea(
             child: state.step == MfaStep.checking && state.isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : _buildBody(state),
           ),
-        ),
       ),
     );
   }

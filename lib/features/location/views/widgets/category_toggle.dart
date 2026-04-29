@@ -1,6 +1,6 @@
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
 
 class CategoryToggle extends StatelessWidget {
   const CategoryToggle({super.key, 

@@ -1,7 +1,6 @@
-// lib/features/profile/views/view_models/profile_stream_provider.dart
 import 'dart:async';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_provider.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_state.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_provider.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final profileStreamProvider = StreamProvider.family<ProfileState, String?>((
@@ -29,7 +28,8 @@ final profileStreamProvider = StreamProvider.family<ProfileState, String?>((
       final state = ref.read(profileProvider(userId));
       controller.add(state);
     } catch (e) {
-      controller.add(ProfileState(loading: false, errorMessage: e.toString()));
+      controller
+          .add(ProfileState(loading: false, errorMessage: e.toString()));
     }
   });
 

@@ -1,4 +1,4 @@
-import 'package:flutter_education_app/features/chat/models/friend_request_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/friend_request_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class FriendRequestNotificationService {

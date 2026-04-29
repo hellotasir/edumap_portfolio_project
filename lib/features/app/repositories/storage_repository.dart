@@ -1,5 +1,5 @@
 import 'dart:io';
-import 'package:flutter_education_app/core/services/cloud/storage_service.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/storage_service.dart';
 
 class StorageResult<T> {
   final T? data;

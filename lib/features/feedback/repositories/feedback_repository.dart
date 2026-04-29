@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_education_app/features/feedback/models/feedback_model.dart';
-import 'package:flutter_education_app/features/app/repositories/database_repository.dart';
+import 'package:edumap_portfolio_project/features/feedback/models/feedback_model.dart';
+import 'package:edumap_portfolio_project/features/app/repositories/database_repository.dart';
 
 class FeedbackRepository implements DatabaseRepository<FeedbackModel> {
   const FeedbackRepository();

@@ -1,8 +1,8 @@
-import 'package:flutter_education_app/core/services/auth/auth_service.dart';
+import 'package:edumap_portfolio_project/core/services/auth/auth_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class AuthRepository {
-  final AuthService _service = AuthService();
+  final AuthService _service = AuthService(Supabase.instance.client);
 
   User? get currentUser => _service.currentUser;
   Session? get currentSession => _service.currentSession;

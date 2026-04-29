@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/app/views/screens/settings_screen.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/conver_photo.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/features/app/views/screens/settings_screen.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/conver_photo.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 
 class ProfileAppBar extends StatelessWidget {
   const ProfileAppBar({

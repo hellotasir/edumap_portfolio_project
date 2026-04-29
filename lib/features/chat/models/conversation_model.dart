@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
+import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
 
 class ConversationModel {
   const ConversationModel({

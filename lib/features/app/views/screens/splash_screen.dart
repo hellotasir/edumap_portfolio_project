@@ -1,10 +1,10 @@
 // ignore_for_file: unrelated_type_equality_checks
 
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/consts/messages.dart';
-import 'package:flutter_education_app/features/auth/views/screens/auth_screen.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/widgets/snackbar_widget.dart';
+import 'package:edumap_portfolio_project/core/consts/messages.dart';
+import 'package:edumap_portfolio_project/features/auth/views/screens/auth_screen.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/widgets/snackbar_widget.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

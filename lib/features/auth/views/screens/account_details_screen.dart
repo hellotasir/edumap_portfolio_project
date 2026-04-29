@@ -1,9 +1,9 @@
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/views/view_models/auth_providers.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 
 class AccountDetailsScreen extends ConsumerWidget {
   const AccountDetailsScreen({super.key});
@@ -31,7 +31,7 @@ class AccountDetailsScreen extends ConsumerWidget {
     final session = repo.currentSession;
     final isAuthenticated = ref.watch(isAuthenticatedProvider);
 
-    return MaterialWidget(
+    return NetworkWidget(
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Account Details'),

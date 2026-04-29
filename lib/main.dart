@@ -1,15 +1,15 @@
 import 'dart:async';
+import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
+import 'package:edumap_portfolio_project/core/services/notification/notification_service.dart';
+import 'package:edumap_portfolio_project/core/widgets/material_widget.dart';
+import 'package:edumap_portfolio_project/features/app/error/error_handler.dart';
+import 'package:edumap_portfolio_project/features/app/views/screens/splash_screen.dart';
+import 'package:edumap_portfolio_project/firebase_options.dart';
 import 'package:flutter/foundation.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:flutter_education_app/core/consts/api_keys.dart';
-import 'package:flutter_education_app/core/services/notification/notification_service.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/features/app/error/error_handler.dart';
-import 'package:flutter_education_app/features/app/views/screens/splash_screen.dart';
-import 'package:flutter_education_app/firebase_options.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -58,7 +58,7 @@ void main() {
         return true;
       };
 
-      runApp(const ProviderScope(child: MyApp()));
+      runApp(const ProviderScope(child: MaterialWidget(child: MyApp())));
 
     },
     (error, stack) {
@@ -72,6 +72,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialWidget(child: SplashScreen());
+    return SplashScreen();
   }
 }

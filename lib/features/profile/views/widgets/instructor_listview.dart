@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/models/detail_item.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/detail_listview.dart';
+import 'package:edumap_portfolio_project/features/profile/models/detail_item.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/detail_listview.dart';
 
 class InstructorListView extends StatelessWidget {
   const InstructorListView({

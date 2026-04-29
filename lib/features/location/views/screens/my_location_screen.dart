@@ -1,12 +1,12 @@
 import 'dart:async';
-
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/local/user_location_service.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
-import 'package:flutter_education_app/features/location/views/screens/friends_location_screen.dart';
-import 'package:flutter_education_app/features/location/views/widgets/address_card.dart';
-import 'package:flutter_education_app/features/location/views/widgets/empty_state.dart';
-import 'package:flutter_education_app/features/location/views/widgets/header_card.dart';
+import 'package:edumap_portfolio_project/core/services/local/user_location_service.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/views/screens/friends_location_screen.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/address_card.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/empty_state.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/header_card.dart';
 
 import '../widgets/add_address_sheet.dart';
 
@@ -33,7 +33,9 @@ class _MyLocationScreenState extends State<MyLocationScreen> {
   @override
   void initState() {
     super.initState();
-    _sub = widget.locationService.watchMyLocations(widget.userId).listen((doc) {
+    _sub = widget.locationService.watchMyLocations(widget.userId).listen((
+      UserLocationDoc doc,
+    ) {
       if (mounted) setState(() => _doc = doc);
     });
   }
@@ -160,47 +162,49 @@ class _MyLocationScreenState extends State<MyLocationScreen> {
     final theme = Theme.of(context);
     final entries = _doc?.entries ?? [];
 
-    return Scaffold(
-      backgroundColor: theme.colorScheme.surfaceContainerLowest,
-      body: CustomScrollView(
-        slivers: [
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: HeaderCard(
-                theme: theme,
-                loadingGps: _loadingGps,
-                gpsError: _gpsError,
-                hasCurrent: _doc?.currentLocation != null,
-                onShareGps: _shareCurrentLocation,
-                onTrackDistance: _openFriendsMap,
-                onAddAddress: _openAddAddress,
-              ),
-            ),
-          ),
-          const SliverToBoxAdapter(child: SizedBox(height: 16)),
-          if (entries.isEmpty)
-            SliverFillRemaining(
-              hasScrollBody: false,
-              child: EmptyState(theme: theme),
-            )
-          else
-            SliverPadding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-              sliver: SliverList.separated(
-                itemCount: entries.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => AddressCard(
-                  entry: entries[i],
+    return NetworkWidget(
+      child: Scaffold(
+        backgroundColor: theme.colorScheme.surfaceContainerLowest,
+        body: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: HeaderCard(
                   theme: theme,
-                  onToggleVisibility: () => _toggleVisibility(entries[i]),
-                  onDelete: entries[i].type == AddressType.saved
-                      ? () => _deleteEntry(entries[i])
-                      : null,
+                  loadingGps: _loadingGps,
+                  gpsError: _gpsError,
+                  hasCurrent: _doc?.currentLocation != null,
+                  onShareGps: _shareCurrentLocation,
+                  onTrackDistance: _openFriendsMap,
+                  onAddAddress: _openAddAddress,
                 ),
               ),
             ),
-        ],
+            const SliverToBoxAdapter(child: SizedBox(height: 16)),
+            if (entries.isEmpty)
+              SliverFillRemaining(
+                hasScrollBody: false,
+                child: EmptyState(theme: theme),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                sliver: SliverList.separated(
+                  itemCount: entries.length,
+                  separatorBuilder: (_, _) => const SizedBox(height: 10),
+                  itemBuilder: (_, i) => AddressCard(
+                    entry: entries[i],
+                    theme: theme,
+                    onToggleVisibility: () => _toggleVisibility(entries[i]),
+                    onDelete: entries[i].type == AddressType.saved
+                        ? () => _deleteEntry(entries[i])
+                        : null,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

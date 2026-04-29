@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
-import 'package:flutter_education_app/features/location/views/widgets/avatar.dart';
-import 'package:flutter_education_app/features/location/views/widgets/entry_chip.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/avatar.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/entry_chip.dart';
 
 class FriendCard extends StatelessWidget {
   const FriendCard({

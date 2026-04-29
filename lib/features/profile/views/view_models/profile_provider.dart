@@ -1,13 +1,13 @@
-import 'package:flutter_education_app/features/app/repositories/storage_repository.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_notifier.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_state.dart';
+import 'package:edumap_portfolio_project/features/app/repositories/storage_repository.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_notifier.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/core/services/cloud/database_service.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/repositories/profile_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>(
   (_) => AuthRepository(),

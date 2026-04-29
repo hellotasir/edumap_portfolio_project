@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/source_tile.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/source_tile.dart';
 import 'package:image_picker/image_picker.dart';
 
 class ImageSourceSheet extends StatelessWidget {

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/feedback/models/feedback_model.dart';
+import 'package:edumap_portfolio_project/features/feedback/models/feedback_model.dart';
 
 class FeedbackTile extends StatelessWidget {
   const FeedbackTile({

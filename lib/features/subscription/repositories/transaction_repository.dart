@@ -1,4 +1,4 @@
-import 'package:flutter_education_app/features/subscription/models/transaction_history.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/transaction_history.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

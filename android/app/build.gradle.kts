@@ -20,7 +20,6 @@ android {
         isCoreLibraryDesugaringEnabled = true
     }
 
-    // ✅ Kotlin DSL syntax for packagingOptions
     packaging {
         jniLibs {
             pickFirsts += setOf(
@@ -42,16 +41,25 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
     }
 
     buildTypes {
-        release {
-            signingConfig = signingConfigs.getByName("debug")
-        }
+    getByName("release") {
+
+        signingConfig = signingConfigs.getByName("debug")
+
+        isMinifyEnabled = true
+        isShrinkResources = true
+
+        proguardFiles(
+            getDefaultProguardFile("proguard-android-optimize.txt"),
+            "proguard-rules.pro"
+        )
     }
 }
+}
 
-// ✅ dependencies block is OUTSIDE android block
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("com.google.android.material:material:1.9.0")

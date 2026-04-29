@@ -1,19 +1,19 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/core/consts/messages.dart';
-import 'package:flutter_education_app/features/feedback/models/feedback_model.dart';
-import 'package:flutter_education_app/features/feedback/models/filter_state.dart';
-import 'package:flutter_education_app/features/feedback/repositories/feedback_repository.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/services/cloud/database_service.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/core/widgets/snackbar_widget.dart';
-import 'package:flutter_education_app/features/feedback/views/widgets/empty_state.dart';
-import 'package:flutter_education_app/features/feedback/views/widgets/feedback_form.dart';
-import 'package:flutter_education_app/features/feedback/views/widgets/feedback_tile.dart';
-import 'package:flutter_education_app/features/feedback/views/widgets/filter_sheet.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/core/consts/messages.dart';
+import 'package:edumap_portfolio_project/features/feedback/models/feedback_model.dart';
+import 'package:edumap_portfolio_project/features/feedback/models/filter_state.dart';
+import 'package:edumap_portfolio_project/features/feedback/repositories/feedback_repository.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
+import 'package:edumap_portfolio_project/core/widgets/snackbar_widget.dart';
+import 'package:edumap_portfolio_project/features/feedback/views/widgets/empty_state.dart';
+import 'package:edumap_portfolio_project/features/feedback/views/widgets/feedback_form.dart';
+import 'package:edumap_portfolio_project/features/feedback/views/widgets/feedback_tile.dart';
+import 'package:edumap_portfolio_project/features/feedback/views/widgets/filter_sheet.dart';
 
 class FeedbackScreen extends StatefulWidget {
   const FeedbackScreen({super.key, required this.authRepository});
@@ -276,7 +276,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
     final canAdd = !_fetching && _myFeedback == null;
 
-    return MaterialWidget(
+    return NetworkWidget(
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Feedback'),

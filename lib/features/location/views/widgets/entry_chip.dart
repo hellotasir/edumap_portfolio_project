@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
 
 class EntryChip extends StatelessWidget {
   const EntryChip({super.key, required this.entry, required this.theme});

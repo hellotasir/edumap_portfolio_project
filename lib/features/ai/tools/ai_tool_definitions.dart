@@ -1,5 +1,5 @@
-import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
 
 typedef SearchUsersParams = ({String query, int? limit});
 typedef GetProfileParams = ({String userId});
@@ -62,26 +62,32 @@ extension AiToolMeta on AiTool {
       };
 
   String get description => switch (this) {
-        AiTool.searchUsers => 'Search for users by username. Returns a list of matching profiles.',
-        AiTool.getUserProfile => 'Fetch a single user profile by their userId.',
-        AiTool.getFriendsList => 'Get all friends of a given userId with their profile info.',
-        AiTool.getGroupMembers => 'Get all members of a group conversation.',
-        AiTool.sendMessage => 'Send a text message in an existing conversation.',
-        AiTool.sendFriendRequest => 'Send a friend request to another user.',
-        AiTool.respondToFriendRequest => 'Accept or decline an incoming friend request.',
-        AiTool.cancelFriendRequest => 'Cancel a previously sent friend request.',
-        AiTool.areFriends => 'Check whether two users are already friends.',
-        AiTool.getIndividualConversation => 'Find an existing 1-to-1 conversation between two users.',
-        AiTool.createIndividualConversation => 'Create a new 1-to-1 conversation between two users.',
-        AiTool.deleteMessage => 'Soft-delete a message (marks it as deleted, content replaced).',
+    AiTool.searchUsers =>
+      'Search for users by username. Returns a list of matching profiles.',
+    AiTool.getUserProfile => 'Fetch a single user profile by their userId.',
+    AiTool.getFriendsList =>
+      'Get all friends of a given userId with their profile info.',
+    AiTool.getGroupMembers => 'Get all members of a group conversation.',
+    AiTool.sendMessage => 'Send a text message in an existing conversation.',
+    AiTool.sendFriendRequest => 'Send a friend request to another user.',
+    AiTool.respondToFriendRequest =>
+      'Accept or decline an incoming friend request.',
+    AiTool.cancelFriendRequest => 'Cancel a previously sent friend request.',
+    AiTool.areFriends => 'Check whether two users are already friends.',
+    AiTool.getIndividualConversation =>
+      'Find an existing 1-to-1 conversation between two users.',
+    AiTool.createIndividualConversation =>
+      'Create a new 1-to-1 conversation between two users.',
+    AiTool.deleteMessage =>
+      'Soft-delete a message (marks it as deleted, content replaced).',
       };
 
   Map<String, dynamic> get parametersSchema => switch (this) {
         AiTool.searchUsers => {
             'type': 'object',
             'properties': {
-              'query': {'type': 'string', 'description': 'Username search query'},
-              'limit': {'type': 'integer', 'description': 'Max results (default 20)'},
+        'query': {'type': 'string', 'description': 'Username search query'},
+        'limit': {'type': 'integer', 'description': 'Max results (default 20)'},
             },
             'required': ['query'],
           },
@@ -115,10 +121,18 @@ extension AiToolMeta on AiTool {
               'content': {'type': 'string'},
               'isFriend': {
                 'type': 'boolean',
-                'description': 'Whether sender and recipient are already friends. Non-friends can only send 3 messages.',
+          'description':
+              'Whether sender and recipient are already friends. '
+              'Non-friends can only send 3 messages.',
               },
             },
-            'required': ['conversationId', 'senderId', 'senderUsername', 'content', 'isFriend'],
+      'required': [
+        'conversationId',
+        'senderId',
+        'senderUsername',
+        'content',
+        'isFriend',
+      ],
           },
         AiTool.sendFriendRequest => {
             'type': 'object',
@@ -129,7 +143,13 @@ extension AiToolMeta on AiTool {
               'toUserId': {'type': 'string'},
               'toUsername': {'type': 'string'},
             },
-            'required': ['fromUserId', 'fromUsername', 'fromProfilePhoto', 'toUserId', 'toUsername'],
+      'required': [
+        'fromUserId',
+        'fromUsername',
+        'fromProfilePhoto',
+        'toUserId',
+        'toUsername',
+      ],
           },
         AiTool.respondToFriendRequest => {
             'type': 'object',
@@ -173,7 +193,12 @@ extension AiToolMeta on AiTool {
               'otherUserId': {'type': 'string'},
               'otherUsername': {'type': 'string'},
             },
-            'required': ['currentUserId', 'currentUsername', 'otherUserId', 'otherUsername'],
+      'required': [
+        'currentUserId',
+        'currentUsername',
+        'otherUserId',
+        'otherUsername',
+      ],
           },
         AiTool.deleteMessage => {
             'type': 'object',
@@ -191,7 +216,10 @@ class AiToolExecutor {
 
   final ChatRepository _chat;
 
-  Future<Map<String, dynamic>> execute(String toolName, Map<String, dynamic> args) async {
+  Future<Map<String, dynamic>> execute(
+    String toolName,
+    Map<String, dynamic> args,
+  ) async {
     final tool = AiTool.values.firstWhere(
       (t) => t.toolName == toolName,
       orElse: () => throw ArgumentError('Unknown tool: $toolName'),
@@ -208,7 +236,9 @@ class AiToolExecutor {
       AiTool.cancelFriendRequest => _cancelFriendRequest(args),
       AiTool.areFriends => _areFriends(args),
       AiTool.getIndividualConversation => _getIndividualConversation(args),
-      AiTool.createIndividualConversation => _createIndividualConversation(args),
+      AiTool.createIndividualConversation => _createIndividualConversation(
+        args,
+      ),
       AiTool.deleteMessage => _deleteMessage(args),
     };
   }
@@ -244,10 +274,16 @@ class AiToolExecutor {
       content: a['content'] as String,
       isFriend: a['isFriend'] as bool,
     );
-    return {'success': true, 'messageId': msg.id, 'sentAt': msg.sentAt.toIso8601String()};
+    return {
+      'success': true,
+      'messageId': msg.id,
+      'sentAt': msg.sentAt.toIso8601String(),
+    };
   }
 
-  Future<Map<String, dynamic>> _sendFriendRequest(Map<String, dynamic> a) async {
+  Future<Map<String, dynamic>> _sendFriendRequest(
+    Map<String, dynamic> a,
+  ) async {
     final req = await _chat.sendFriendRequest(
       fromUserId: a['fromUserId'] as String,
       fromUsername: a['fromUsername'] as String,
@@ -258,7 +294,10 @@ class AiToolExecutor {
     return {'success': true, 'requestId': req.id};
   }
 
-  Future<Map<String, dynamic>> _respondToFriendRequest(Map<String, dynamic> a) async {
+  Future<Map<String, dynamic>> _respondToFriendRequest(
+    Map<String, dynamic> a,
+  ) async {
+    // FriendRequestStatus is now correctly imported from friend_request_model.dart
     final status = a['response'] == 'accepted'
         ? FriendRequestStatus.accepted
         : FriendRequestStatus.rejected;
@@ -266,26 +305,39 @@ class AiToolExecutor {
     return {'success': true, 'status': a['response']};
   }
 
-  Future<Map<String, dynamic>> _cancelFriendRequest(Map<String, dynamic> a) async {
+  Future<Map<String, dynamic>> _cancelFriendRequest(
+    Map<String, dynamic> a,
+  ) async {
     await _chat.cancelFriendRequest(a['requestId'] as String);
     return {'success': true};
   }
 
   Future<Map<String, dynamic>> _areFriends(Map<String, dynamic> a) async {
-    final result = await _chat.areFriends(a['userIdA'] as String, a['userIdB'] as String);
+    final result = await _chat.areFriends(
+      a['userIdA'] as String,
+      a['userIdB'] as String,
+    );
     return {'areFriends': result};
   }
 
-  Future<Map<String, dynamic>> _getIndividualConversation(Map<String, dynamic> a) async {
+  Future<Map<String, dynamic>> _getIndividualConversation(
+    Map<String, dynamic> a,
+  ) async {
     final conv = await _chat.getIndividualConversation(
       a['userIdA'] as String,
       a['userIdB'] as String,
     );
     if (conv == null) return {'found': false};
-    return {'found': true, 'conversationId': conv.id, 'participantIds': conv.participantIds};
+    return {
+      'found': true,
+      'conversationId': conv.id,
+      'participantIds': conv.participantIds,
+    };
   }
 
-  Future<Map<String, dynamic>> _createIndividualConversation(Map<String, dynamic> a) async {
+  Future<Map<String, dynamic>> _createIndividualConversation(
+    Map<String, dynamic> a,
+  ) async {
     final conv = await _chat.createIndividualConversation(
       currentUserId: a['currentUserId'] as String,
       currentUsername: a['currentUsername'] as String,
@@ -296,7 +348,10 @@ class AiToolExecutor {
   }
 
   Future<Map<String, dynamic>> _deleteMessage(Map<String, dynamic> a) async {
-    await _chat.deleteMessage(a['conversationId'] as String, a['messageId'] as String);
+    await _chat.deleteMessage(
+      a['conversationId'] as String,
+      a['messageId'] as String,
+    );
     return {'success': true};
   }
 }

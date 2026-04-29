@@ -1,15 +1,15 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/consts/api_keys.dart';
-import 'package:flutter_education_app/features/auth/views/screens/auth_screen.dart';
-import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
-import 'package:flutter_education_app/features/auth/views/widgets/google_logo.dart';
+import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
+import 'package:edumap_portfolio_project/features/auth/views/screens/auth_screen.dart';
+import 'package:edumap_portfolio_project/features/auth/views/view_models/auth_providers.dart';
+import 'package:edumap_portfolio_project/features/auth/views/widgets/google_logo.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/core/consts/app_details.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/core/widgets/snackbar_widget.dart';
+import 'package:edumap_portfolio_project/core/consts/app_details.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/widgets/snackbar_widget.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'signup_screen.dart';
@@ -126,7 +126,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final isDark = Theme.of(context).brightness != Brightness.dark;
     final textTheme = Theme.of(context).textTheme;
 
-    return MaterialWidget(
+    return NetworkWidget(
       child: Scaffold(
         body: SafeArea(
           child: SingleChildScrollView(

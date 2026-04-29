@@ -1,7 +1,7 @@
+import 'package:edumap_portfolio_project/features/feedback/models/feedback_model.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/cloud/database_service.dart';
-import 'package:flutter_education_app/features/feedback/models/feedback_model.dart';
-import 'package:flutter_education_app/features/feedback/views/widgets/form_sheet_scaffold.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
+import 'package:edumap_portfolio_project/features/feedback/views/widgets/form_sheet_scaffold.dart';
 
 class FeedbackForm extends StatefulWidget {
   const FeedbackForm({

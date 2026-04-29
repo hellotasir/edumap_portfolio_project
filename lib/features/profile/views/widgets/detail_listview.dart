@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/models/detail_item.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/detail_card.dart';
+import 'package:edumap_portfolio_project/features/profile/models/detail_item.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/detail_card.dart';
 
 class DetailListView extends StatelessWidget {
   const DetailListView({super.key, required this.items});

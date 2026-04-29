@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/action_row.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/avatar_row.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/bio_section.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/details_section.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/profile_appbar.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/action_row.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/avatar_row.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/bio_section.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/details_section.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/profile_appbar.dart';
 
 class ProfileBody extends StatelessWidget {
   const ProfileBody({

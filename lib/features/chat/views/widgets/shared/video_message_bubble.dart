@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/chat/models/chat_message_model.dart';
-import 'package:flutter_education_app/features/chat/views/widgets/shared/full_screen_video_player.dart';
+import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
+import 'package:edumap_portfolio_project/features/chat/views/widgets/shared/full_screen_video_player.dart';
 import 'package:video_player/video_player.dart';
 
 class VideoMessageBubble extends StatefulWidget {

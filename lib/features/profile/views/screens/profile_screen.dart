@@ -1,17 +1,16 @@
 // lib/features/profile/views/screens/profile_screen.dart
-
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_notifier.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_provider.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_stream_provider.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_notifier.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_provider.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_stream_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/features/app/views/screens/home_screen.dart';
-import 'package:flutter_education_app/core/widgets/loading_widget.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/features/profile/views/screens/profile_settings_screen.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/error_view.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/profile_body.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/features/app/views/screens/home_screen.dart';
+import 'package:edumap_portfolio_project/core/widgets/loading_widget.dart';
+import 'package:edumap_portfolio_project/features/profile/views/screens/profile_settings_screen.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/error_view.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/profile_body.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key, this.viewUserId});
@@ -131,7 +130,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(profileStreamProvider(widget.viewUserId));
 
-    return MaterialWidget(
+    return NetworkWidget(
       child: Scaffold(
         body: AnimatedSwitcher(
           duration: const Duration(milliseconds: 300),

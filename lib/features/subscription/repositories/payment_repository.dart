@@ -1,10 +1,10 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_education_app/core/consts/api_keys.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/subscription/models/subscription_model.dart';
-import 'package:flutter_education_app/features/subscription/models/subscription_plan.dart';
-import 'package:flutter_education_app/features/subscription/models/transaction_history.dart';
+import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/subscription_model.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/subscription_plan.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/transaction_history.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'dart:convert';

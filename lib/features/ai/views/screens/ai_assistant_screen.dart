@@ -1,11 +1,11 @@
+import 'package:edumap_portfolio_project/core/widgets/loading_widget.dart';
+import 'package:edumap_portfolio_project/features/ai/prompts/ai_prompts.dart';
+import 'package:edumap_portfolio_project/features/ai/views/view_models/ai_providers.dart';
+import 'package:edumap_portfolio_project/features/ai/views/widgets/empty_state.dart';
+import 'package:edumap_portfolio_project/features/ai/views/widgets/error_banner.dart';
+import 'package:edumap_portfolio_project/features/ai/views/widgets/input_bar.dart';
+import 'package:edumap_portfolio_project/features/ai/views/widgets/message_list.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/widgets/loading_widget.dart';
-import 'package:flutter_education_app/features/ai/prompts/ai_prompts.dart';
-import 'package:flutter_education_app/features/ai/views/view_models/ai_providers.dart';
-import 'package:flutter_education_app/features/ai/views/widgets/empty_state.dart';
-import 'package:flutter_education_app/features/ai/views/widgets/error_banner.dart';
-import 'package:flutter_education_app/features/ai/views/widgets/input_bar.dart';
-import 'package:flutter_education_app/features/ai/views/widgets/message_list.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class AiAssistantScreen extends ConsumerStatefulWidget {
@@ -46,15 +46,15 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
   void _applyConfig() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      final next = GeminiConfig(
+      final next = AiConfig(
         userId: widget.userId,
         username: widget.username,
         assistantMode: widget.assistantMode ?? AiPrompts.modeGeneral,
         customTone: widget.customTone,
       );
-      final current = ref.read(geminiConfigProvider);
+      final current = ref.read(aiConfigProvider);
       if (current != next) {
-        ref.read(geminiConfigProvider.notifier).state = next;
+        ref.read(aiConfigProvider.notifier).state = next;
       }
     });
   }
@@ -89,7 +89,7 @@ class _AiBodyState extends ConsumerState<_AiBody> {
     _controller.clear();
     _focusNode.requestFocus();
     ref
-        .read(geminiNotifierProvider.notifier)
+        .read(aiChatNotifierProvider.notifier)
         .send(text)
         .then((_) => _scrollToBottom());
   }
@@ -108,30 +108,30 @@ class _AiBodyState extends ConsumerState<_AiBody> {
 
   @override
   Widget build(BuildContext context) {
-    final state = ref.watch(geminiNotifierProvider);
-    final configReady = ref.watch(geminiConfigProvider) != null;
+    final state = ref.watch(aiChatNotifierProvider);
+    final configReady = ref.watch(aiConfigProvider) != null;
 
     return Column(
       children: [
         Expanded(
           child: !configReady
-              ? Center(child: const LoadingIndicator())
+              ? const Center(child: LoadingIndicator())
               : state.isEmpty
-              ? EmptyState(
-                  onSend: (text) =>
-                      ref.read(geminiNotifierProvider.notifier).send(text),
-                )
-              : MessageList(
-                  messages: state.messages,
-                  isLoading: state.isLoading,
-                  scrollController: _scrollController,
-                ),
+                  ? EmptyState(
+                      onSend: (text) =>
+                          ref.read(aiChatNotifierProvider.notifier).send(text),
+                    )
+                  : MessageList(
+                      messages: state.messages,
+                      isLoading: state.isLoading,
+                      scrollController: _scrollController,
+                    ),
         ),
         if (state.errorMessage != null)
           ErrorBanner(
             message: state.errorMessage!,
             onDismiss: () =>
-                ref.read(geminiNotifierProvider.notifier).clearChat(),
+                ref.read(aiChatNotifierProvider.notifier).clearChat(),
           ),
         InputBar(
           controller: _controller,
@@ -140,7 +140,7 @@ class _AiBodyState extends ConsumerState<_AiBody> {
           onSend: _send,
           onClear: state.isEmpty
               ? null
-              : () => ref.read(geminiNotifierProvider.notifier).clearChat(),
+              : () => ref.read(aiChatNotifierProvider.notifier).clearChat(),
         ),
       ],
     );

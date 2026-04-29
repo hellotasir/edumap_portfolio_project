@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/models/detail_item.dart';
+import 'package:edumap_portfolio_project/features/profile/models/detail_item.dart';
 
 class DetailCard extends StatelessWidget {
   const DetailCard({super.key, required this.item});

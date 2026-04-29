@@ -1,16 +1,15 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/core/widgets/loading_widget.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/features/subscription/models/subscription_plan.dart';
-import 'package:flutter_education_app/features/subscription/views/screens/payment_screen.dart';
-import 'package:flutter_education_app/features/subscription/views/screens/transaction_screen.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
-import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
-import 'package:flutter_education_app/core/consts/messages.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/core/widgets/loading_widget.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/subscription_plan.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/screens/payment_screen.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/screens/transaction_screen.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/repositories/profile_repository.dart';
+import 'package:edumap_portfolio_project/features/profile/views/screens/profile_screen.dart';
+import 'package:edumap_portfolio_project/core/consts/messages.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 
 class SubscriptionScreen extends StatefulWidget {
   const SubscriptionScreen({super.key});
@@ -60,8 +59,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
         final profile = snapshot.data;
         final isLoading = snapshot.connectionState == ConnectionState.waiting;
 
-        return MaterialWidget(
-          child: Scaffold(
+        return Scaffold(
             appBar: AppBar(
               title: const Text('Subscription'),
               leading: IconButton(
@@ -198,8 +196,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                         const SizedBox(height: 50),
                       ],
                     ),
-                  ),
-          ),
+                ),
         );
       },
     );

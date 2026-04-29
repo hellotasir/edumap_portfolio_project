@@ -1,8 +1,8 @@
 import 'dart:convert';
+import 'package:edumap_portfolio_project/features/ai/prompts/ai_prompts.dart';
+import 'package:edumap_portfolio_project/features/ai/tools/ai_tool_definitions.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_education_app/features/ai/prompts/ai_prompts.dart';
-import 'package:flutter_education_app/features/ai/tools/ai_tool_definitions.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
 import 'package:http/http.dart' as http;
 
 enum MessageRole { user, assistant }
@@ -197,6 +197,23 @@ class AiChatService {
         return 'The AI service is temporarily unavailable. Please try again later.';
       }
     }
+
+    // Handle typed exceptions from ChatRepository directly when they bubble up
+    if (e is ToxicityException) {
+      return e.banned
+          ? 'Your account has been banned due to repeated toxic behavior.'
+          : 'Your message was flagged as inappropriate and was not sent.';
+    }
+    if (e is MessageLimitException) {
+      return 'You can only send 3 messages before the other person accepts your friend request.';
+    }
+    if (e is DuplicateFriendRequestException) {
+      return e.message;
+    }
+    if (e is BusyException) {
+      return 'Please wait for the previous action to complete before trying again.';
+    }
+
     final msg = e.toString().toLowerCase();
     if (msg.contains('timeout') || msg.contains('timed out')) {
       return 'The request timed out. Please check your connection and try again.';
@@ -204,14 +221,21 @@ class AiChatService {
     if (msg.contains('socketexception') || msg.contains('network')) {
       return 'Network error. Please check your internet connection.';
     }
+    // String-based fallbacks for exceptions that surface via tool result error strings
+    if (msg.contains('toxicityexception')) {
+      if (msg.contains('banned')) {
+        return 'Your account has been banned due to repeated toxic behavior.';
+      }
+      return 'Your message was flagged as inappropriate and was not sent.';
+    }
     if (msg.contains('messagelimitexception')) {
       return 'You can only send 3 messages before the other person accepts your friend request.';
     }
-    if (msg.contains('toxicityexception')) {
-      return 'Your message was flagged as inappropriate and was not sent.';
-    }
     if (msg.contains('duplicatefriendrequestexception')) {
       return 'A friend request between these users already exists.';
+    }
+    if (msg.contains('busyexception')) {
+      return 'Please wait for the previous action to complete before trying again.';
     }
     return 'Something went wrong. Please try again.';
   }

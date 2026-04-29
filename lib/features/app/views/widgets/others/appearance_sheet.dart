@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/features/app/views/view_models/app_theme_provider.dart';
+import 'package:edumap_portfolio_project/features/app/views/view_models/app_theme_provider.dart';
 
 class AppearanceSheet extends ConsumerStatefulWidget {
   const AppearanceSheet._({required this.messenger});
 
-  // Accept the messenger from the caller
   final ScaffoldMessengerState messenger;
 
   static void show(BuildContext context) {
-    // Capture before opening the sheet
+    
     final messenger = ScaffoldMessenger.of(context);
 
     showModalBottomSheet(

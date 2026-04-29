@@ -1,15 +1,15 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
-import 'package:flutter_education_app/features/auth/views/widgets/auth_filled_loading_button.dart';
-import 'package:flutter_education_app/features/auth/views/widgets/auth_form_header.dart';
-import 'package:flutter_education_app/features/auth/views/widgets/auth_password_form_field.dart';
-import 'package:flutter_education_app/features/auth/views/widgets/auth_success_view.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/views/view_models/auth_providers.dart';
+import 'package:edumap_portfolio_project/features/auth/views/widgets/auth_filled_loading_button.dart';
+import 'package:edumap_portfolio_project/features/auth/views/widgets/auth_form_header.dart';
+import 'package:edumap_portfolio_project/features/auth/views/widgets/auth_password_form_field.dart';
+import 'package:edumap_portfolio_project/features/auth/views/widgets/auth_success_view.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 
 class ResetPasswordScreen extends ConsumerStatefulWidget {
   const ResetPasswordScreen({super.key});
@@ -66,7 +66,7 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialWidget(
+    return NetworkWidget(
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Reset Password'),

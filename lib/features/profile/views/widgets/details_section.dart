@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/contact_listview.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/instructor_listview.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/student_listview.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/contact_listview.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/instructor_listview.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/student_listview.dart';
 
 class DetailsSection extends StatefulWidget {
   const DetailsSection({

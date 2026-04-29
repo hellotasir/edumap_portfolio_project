@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/feedback/models/filter_state.dart';
+import 'package:edumap_portfolio_project/features/feedback/models/filter_state.dart';
 
 class FilterSheet extends StatefulWidget {
   const FilterSheet({

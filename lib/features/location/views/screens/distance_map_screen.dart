@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:math' as math;
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/consts/api_keys.dart';
-import 'package:flutter_education_app/core/services/local/user_location_service.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
-import 'package:flutter_education_app/features/location/views/widgets/category_toggle.dart';
-import 'package:flutter_education_app/features/location/views/widgets/distance_panel.dart';
-import 'package:flutter_education_app/features/location/views/widgets/map_button.dart';
-import 'package:flutter_education_app/features/location/views/widgets/plusing_marker.dart';
-import 'package:flutter_education_app/features/location/views/widgets/static_marker.dart';
+import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
+import 'package:edumap_portfolio_project/core/services/local/user_location_service.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/category_toggle.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/distance_panel.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/map_button.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/plusing_marker.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/static_marker.dart';
 import 'package:flutter_map/flutter_map.dart'
     show
         CameraFit,
@@ -97,7 +98,7 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
     try {
       _mySub = widget.locationService
           .watchMyLocations(widget.currentUserId)
-          .listen((doc) {
+          .listen((UserLocationDoc doc) {
             if (!mounted) return;
             setState(() {
               _myBestEntry = _pickMyBest(doc);
@@ -209,60 +210,62 @@ class _DistanceMapScreenState extends State<DistanceMapScreen>
     final theme = Theme.of(context);
     final topPad = MediaQuery.of(context).padding.top;
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          if (_loading)
-            const Center(child: CircularProgressIndicator())
-          else
-            _buildMap(theme),
-          Positioned(
-            top: topPad + 8,
-            left: 16,
-            child: MapButton(
-              onTap: () => Navigator.of(context).pop(),
-              child: const Icon(Icons.arrow_back_rounded),
+    return NetworkWidget(
+      child: Scaffold(
+        body: Stack(
+          children: [
+            if (_loading)
+              const Center(child: CircularProgressIndicator())
+            else
+              _buildMap(theme),
+            Positioned(
+              top: topPad + 8,
+              left: 16,
+              child: MapButton(
+                onTap: () => Navigator.of(context).pop(),
+                child: const Icon(Icons.arrow_back_rounded),
+              ),
             ),
-          ),
-          Positioned(
-            top: topPad + 8,
-            right: 16,
-            child: Row(
-              children: [
-                if (_availableCategories.length > 1)
-                  CategoryToggle(
-                    categories: _availableCategories,
-                    selected: _selectedCategory ?? _availableCategories.first,
-                    onSelected: _switchCategory,
-                    theme: theme,
+            Positioned(
+              top: topPad + 8,
+              right: 16,
+              child: Row(
+                children: [
+                  if (_availableCategories.length > 1)
+                    CategoryToggle(
+                      categories: _availableCategories,
+                      selected: _selectedCategory ?? _availableCategories.first,
+                      onSelected: _switchCategory,
+                      theme: theme,
+                    ),
+                  const SizedBox(width: 8),
+                  MapButton(
+                    onTap: _isRefreshing ? null : _refreshMyLocation,
+                    child: _isRefreshing
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.my_location_rounded),
                   ),
-                const SizedBox(width: 8),
-                MapButton(
-                  onTap: _isRefreshing ? null : _refreshMyLocation,
-                  child: _isRefreshing
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.my_location_rounded),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: DistancePanel(
-              friend: widget.targetFriend,
-              theirEntry: _theirEntry,
-              myEntry: _myBestEntry,
-              distanceKm: _distanceKm,
-              theme: theme,
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: DistancePanel(
+                friend: widget.targetFriend,
+                theirEntry: _theirEntry,
+                myEntry: _myBestEntry,
+                distanceKm: _distanceKm,
+                theme: theme,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

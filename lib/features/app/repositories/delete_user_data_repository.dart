@@ -1,7 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_education_app/core/services/cloud/delete_service.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/delete_service.dart';
 
 class DeleteRepository {
   DeleteRepository({

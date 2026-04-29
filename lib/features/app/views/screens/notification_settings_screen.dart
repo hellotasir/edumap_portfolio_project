@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/services/notification/firestore_listener_service.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/services/notification/firestore_listener_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationSettingsScreen extends StatefulWidget {
@@ -53,8 +52,7 @@ class _NotificationSettingsScreenState
 
   @override
   Widget build(BuildContext context) {
-    return MaterialWidget(
-      child: Scaffold(
+    return Scaffold(
         appBar: AppBar(
           title: const Text('Notifications'),
           leading: IconButton(
@@ -82,8 +80,7 @@ class _NotificationSettingsScreenState
                   ),
                   const SizedBox(height: 32),
                 ],
-              ),
-      ),
+            ),
     );
   }
 }

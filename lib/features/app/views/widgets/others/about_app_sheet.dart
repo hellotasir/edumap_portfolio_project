@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/consts/app_details.dart';
+import 'package:edumap_portfolio_project/core/consts/app_details.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class AboutSheet extends StatelessWidget {

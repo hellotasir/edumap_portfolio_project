@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/subscription/models/transaction_history.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/transaction_history.dart';
 
 const _kGateways = {
   'all': (label: 'All Gateways', icon: Icons.all_inclusive_rounded),

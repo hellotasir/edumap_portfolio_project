@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {

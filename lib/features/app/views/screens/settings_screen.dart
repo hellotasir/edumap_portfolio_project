@@ -1,19 +1,19 @@
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/local/fcm_token_service.dart';
-import 'package:flutter_education_app/core/services/notification/firestore_listener_service.dart';
-import 'package:flutter_education_app/features/app/views/screens/notification_settings_screen.dart';
-import 'package:flutter_education_app/features/subscription/views/screens/subscription_screen.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/account_sheet.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/features/auth/views/screens/login_screen.dart';
-import 'package:flutter_education_app/features/feedback/views/screens/feedback_screen.dart';
-import 'package:flutter_education_app/features/profile/views/screens/profile_settings_screen.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/core/widgets/snackbar_widget.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/appearance_sheet.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/about_app_sheet.dart';
+import 'package:edumap_portfolio_project/core/services/local/fcm_token_service.dart';
+import 'package:edumap_portfolio_project/core/services/notification/firestore_listener_service.dart';
+import 'package:edumap_portfolio_project/features/app/views/screens/notification_settings_screen.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/screens/subscription_screen.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/account_sheet.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/features/auth/views/screens/login_screen.dart';
+import 'package:edumap_portfolio_project/features/feedback/views/screens/feedback_screen.dart';
+import 'package:edumap_portfolio_project/features/profile/views/screens/profile_settings_screen.dart';
+import 'package:edumap_portfolio_project/core/widgets/snackbar_widget.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/appearance_sheet.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/about_app_sheet.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -30,7 +30,7 @@ class SettingsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final AuthRepository authRepository = AuthRepository();
 
-    return MaterialWidget(
+    return NetworkWidget(
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Settings'),
@@ -61,7 +61,7 @@ class SettingsScreen extends StatelessWidget {
               label: 'Account Settings',
               onTap: () => AccountSheet.show(context, authRepository),
             ),
-           
+
             const SectionHeader(label: 'Preferences'),
             SettingsTile(
               icon: Icons.dark_mode_outlined,
@@ -91,7 +91,6 @@ class SettingsScreen extends StatelessWidget {
               color: Colors.red.shade600,
               onTap: () async {
                 try {
-               
                   final user = Supabase.instance.client.auth.currentUser;
                   final userId = user?.id;
                   final prefs = await SharedPreferences.getInstance();
@@ -102,7 +101,6 @@ class SettingsScreen extends StatelessWidget {
                   }
                   await authRepository.logout();
                   AppNavigator(screen: LoginScreen()).navigate(context);
-
                 } catch (e) {
                   SnackbarWidget(
                     message: 'Logout failed',

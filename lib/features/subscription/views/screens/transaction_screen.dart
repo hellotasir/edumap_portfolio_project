@@ -1,14 +1,15 @@
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/widgets/loading_widget.dart';
-import 'package:flutter_education_app/features/subscription/models/transaction_history.dart';
-import 'package:flutter_education_app/features/subscription/repositories/transaction_repository.dart';
-import 'package:flutter_education_app/features/subscription/views/screens/subscription_screen.dart';
-import 'package:flutter_education_app/features/subscription/views/widgets/empty_state.dart';
-import 'package:flutter_education_app/features/subscription/views/widgets/filter_bar.dart';
-import 'package:flutter_education_app/features/subscription/views/widgets/summary_banner.dart';
-import 'package:flutter_education_app/features/subscription/views/widgets/transaction_detail_sheet.dart';
-import 'package:flutter_education_app/features/subscription/views/widgets/transaction_tile.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/widgets/loading_widget.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/transaction_history.dart';
+import 'package:edumap_portfolio_project/features/subscription/repositories/transaction_repository.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/screens/subscription_screen.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/widgets/empty_state.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/widgets/filter_bar.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/widgets/summary_banner.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/widgets/transaction_detail_sheet.dart';
+import 'package:edumap_portfolio_project/features/subscription/views/widgets/transaction_tile.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
 
 
 
@@ -190,107 +191,113 @@ class _TransactionScreenState extends State<TransactionScreen> {
     final cs = Theme.of(context).colorScheme;
     final tt = Theme.of(context).textTheme;
 
-    return Scaffold(
-      backgroundColor: cs.surface,
-      appBar: AppBar(
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        leading: IconButton(
-          onPressed: () =>
-              AppNavigator(screen: SubscriptionScreen()).navigate(context),
-          icon: const Icon(Icons.chevron_left_outlined),
-          style: IconButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
+    return NetworkWidget(
+        child: Scaffold(
+          backgroundColor: cs.surface,
+          appBar: AppBar(
+            elevation: 0,
+            scrolledUnderElevation: 0,
+            leading: IconButton(
+              onPressed: () =>
+                  AppNavigator(screen: SubscriptionScreen()).navigate(context),
+              icon: const Icon(Icons.chevron_left_outlined),
+              style: IconButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            title: Text(
+              'Payment History',
+              style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
+            ),
+            actions: [
+              IconButton(
+                onPressed: _confirmDeleteAll,
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                  color: Colors.red,
+                ),
+                tooltip: 'Delete all transactions',
+              ),
+            ],
+            bottom: PreferredSize(
+              preferredSize: const Size.fromHeight(1),
+              child: Divider(
+                height: 1,
+                color: cs.outlineVariant.withValues(alpha: 0.5),
+              ),
             ),
           ),
-        ),
-        title: Text(
-          'Payment History',
-          style: tt.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _confirmDeleteAll,
-            icon: const Icon(Icons.delete_outline_rounded, color: Colors.red),
-            tooltip: 'Delete all transactions',
-          ),
-        ],
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(1),
-          child: Divider(
-            height: 1,
-            color: cs.outlineVariant.withValues(alpha: 0.5),
-          ),
-        ),
-      ),
-      body: FutureBuilder<List<TransactionHistory>>(
-        future: _future,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: const LoadingIndicator());
-          }
+          body: FutureBuilder<List<TransactionHistory>>(
+            future: _future,
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return Center(child: const LoadingIndicator());
+              }
 
-          if (snapshot.hasError) {
-            return _ErrorView(
-              message: snapshot.error.toString(),
-              onRetry: _refresh,
-            );
-          }
+              if (snapshot.hasError) {
+                return _ErrorView(
+                  message: snapshot.error.toString(),
+                  onRetry: _refresh,
+                );
+              }
 
-          final all = snapshot.data ?? [];
-          final filtered = _applyFilters(all);
-          final stats = _stats(all);
+              final all = snapshot.data ?? [];
+              final filtered = _applyFilters(all);
+              final stats = _stats(all);
 
-          return CustomScrollView(
-            slivers: [
-              SliverToBoxAdapter(child: SummaryBanner(stats: stats)),
-              SliverToBoxAdapter(
-                child: FilterBar(
-                  searchController: _searchController,
-                  onSearchChanged: (q) => setState(() => _searchQuery = q),
-                  gatewayFilter: _gatewayFilter,
-                  onGatewayChanged: (v) => setState(() => _gatewayFilter = v),
-                  statusFilter: _statusFilter,
-                  onStatusChanged: (v) => setState(() => _statusFilter = v),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
-                  child: Text(
-                    '${filtered.length} transaction${filtered.length == 1 ? '' : 's'}',
-                    style: tt.labelSmall?.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.45),
-                      letterSpacing: 0.4,
+              return CustomScrollView(
+                slivers: [
+                  SliverToBoxAdapter(child: SummaryBanner(stats: stats)),
+                  SliverToBoxAdapter(
+                    child: FilterBar(
+                      searchController: _searchController,
+                      onSearchChanged: (q) => setState(() => _searchQuery = q),
+                      gatewayFilter: _gatewayFilter,
+                      onGatewayChanged: (v) =>
+                          setState(() => _gatewayFilter = v),
+                      statusFilter: _statusFilter,
+                      onStatusChanged: (v) => setState(() => _statusFilter = v),
                     ),
                   ),
-                ),
-              ),
-              if (filtered.isEmpty)
-                SliverFillRemaining(child: EmptyState())
-              else
-                SliverPadding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
-                  sliver: SliverList.separated(
-                    itemCount: filtered.length,
-                    separatorBuilder: (_, _) => Divider(
-                      height: 1,
-                      indent: 68,
-                      color: cs.outlineVariant.withValues(alpha: 0.35),
-                    ),
-                    itemBuilder: (context, i) => TransactionTile(
-                      tx: filtered[i],
-                      onTap: () => _showDetail(context, filtered[i]),
-                      onDelete: () => _deleteSingle(filtered[i]),
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 4, 20, 10),
+                      child: Text(
+                        '${filtered.length} transaction${filtered.length == 1 ? '' : 's'}',
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onSurface.withValues(alpha: 0.45),
+                          letterSpacing: 0.4,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-            ],
-          );
-        },
-      ),
-    );
+                  if (filtered.isEmpty)
+                    SliverFillRemaining(child: EmptyState())
+                  else
+                    SliverPadding(
+                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+                      sliver: SliverList.separated(
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, _) => Divider(
+                          height: 1,
+                          indent: 68,
+                          color: cs.outlineVariant.withValues(alpha: 0.35),
+                        ),
+                        itemBuilder: (context, i) => TransactionTile(
+                          tx: filtered[i],
+                          onTap: () => _showDetail(context, filtered[i]),
+                          onDelete: () => _deleteSingle(filtered[i]),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ),
+      );
   }
 
   void _showDetail(BuildContext context, TransactionHistory tx) {

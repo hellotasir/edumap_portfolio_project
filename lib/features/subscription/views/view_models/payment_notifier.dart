@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/consts/api_keys.dart';
-import 'package:flutter_education_app/features/subscription/models/subscription_plan.dart';
-import 'package:flutter_education_app/features/subscription/repositories/payment_repository.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/subscription_plan.dart';
+import 'package:edumap_portfolio_project/features/subscription/repositories/payment_repository.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:flutter_sslcommerz/model/SSLCSdkType.dart';

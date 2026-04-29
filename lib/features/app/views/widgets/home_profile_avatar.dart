@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
 
 class HomeProfileAvatar extends StatelessWidget {
   const HomeProfileAvatar({

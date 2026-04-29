@@ -1,12 +1,12 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/cloud/database_service.dart';
-import 'package:flutter_education_app/features/app/repositories/storage_repository.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_provider.dart';
-import 'package:flutter_education_app/features/profile/views/view_models/profile_state.dart';
-import 'package:flutter_education_app/features/profile/views/widgets/image_source_sheet.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
+import 'package:edumap_portfolio_project/features/app/repositories/storage_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_provider.dart';
+import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_state.dart';
+import 'package:edumap_portfolio_project/features/profile/views/widgets/image_source_sheet.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:image_picker/image_picker.dart';
@@ -47,6 +47,12 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       );
 
       if (results.isNotEmpty) {
+        if (isOwnProfile) {
+          final currentEmail = _authRepo.currentUser?.email ?? '';
+          if (currentEmail.isNotEmpty) {
+            await _deduplicateDocs(uid, currentEmail);
+          }
+        }
         state = state.copyWith(profile: results.first, loading: false);
       } else if (isOwnProfile) {
         await _createDefaultProfile(uid);
@@ -59,6 +65,29 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     } catch (e, st) {
       debugPrint('[ProfileNotifier] error: $e\n$st');
       state = state.copyWith(loading: false, errorMessage: e.toString());
+    }
+  }
+
+  Future<void> _deduplicateDocs(String uid, String email) async {
+    try {
+      final allByEmail = await _service.getAll(
+        query: (col) => col.where('email', isEqualTo: email),
+      );
+
+      if (allByEmail.length <= 1) return;
+
+      final duplicates = allByEmail.where((p) => p.userId != uid).toList();
+
+      for (final doc in duplicates) {
+        if (doc.id != null) {
+          await _service.deleteByDocId(doc.id!);
+          debugPrint(
+            '[ProfileNotifier] Deleted duplicate profile doc: ${doc.id}',
+          );
+        }
+      }
+    } catch (e, st) {
+      debugPrint('[ProfileNotifier] deduplication error: $e\n$st');
     }
   }
 
@@ -175,7 +204,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     state = state.copyWith(uploadingCover: true);
     try {
       final profile = state.profile!;
-      // Fixed: use named parameters to match StorageRepository signature
       final result = await _storage.uploadCoverPhoto(
         userId: profile.userId,
         file: file,

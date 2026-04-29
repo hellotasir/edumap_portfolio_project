@@ -1,17 +1,16 @@
 // ignore_for_file: use_build_context_synchronously
 
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/app/repositories/delete_user_data_repository.dart';
-import 'package:flutter_education_app/features/auth/repositories/auth_repository.dart';
-import 'package:flutter_education_app/features/auth/views/view_models/auth_providers.dart';
-import 'package:flutter_education_app/features/auth/views/widgets/auth_filled_loading_button.dart';
-import 'package:flutter_education_app/features/auth/views/widgets/auth_password_form_field.dart';
+import 'package:edumap_portfolio_project/features/app/repositories/delete_user_data_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
+import 'package:edumap_portfolio_project/features/auth/views/view_models/auth_providers.dart';
+import 'package:edumap_portfolio_project/features/auth/views/widgets/auth_filled_loading_button.dart';
+import 'package:edumap_portfolio_project/features/auth/views/widgets/auth_password_form_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_education_app/core/routers/app_navigator.dart';
-import 'package:flutter_education_app/core/widgets/material_widget.dart';
-import 'package:flutter_education_app/core/widgets/snackbar_widget.dart';
-import 'package:flutter_education_app/features/app/views/widgets/others/mfa_widget.dart';
-import 'package:flutter_education_app/features/auth/views/screens/login_screen.dart';
+import 'package:edumap_portfolio_project/core/routers/app_navigator.dart';
+import 'package:edumap_portfolio_project/core/widgets/snackbar_widget.dart';
+import 'package:edumap_portfolio_project/features/auth/views/screens/login_screen.dart';
 
 enum _DeleteStep { confirm, deleted }
 
@@ -160,18 +159,16 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
 
   @override
   Widget build(BuildContext context) {
-    return MaterialWidget(
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Delete Account'),
-          leading: IconButton(
-            onPressed: _isLoading ? null : () => Navigator.pop(context),
-            icon: const Icon(Icons.chevron_left_rounded),
+    return NetworkWidget(
+        child: Scaffold(
+          appBar: AppBar(
+            title: const Text('Delete Account'),
+            leading: IconButton(
+              onPressed: _isLoading ? null : () => Navigator.pop(context),
+              icon: const Icon(Icons.chevron_left_rounded),
+            ),
           ),
-        ),
-        body: MfaWidget(
-          authRepository: ref.read(authRepositoryProvider),
-          child: SafeArea(
+          body: SafeArea(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: FadeTransition(
@@ -187,8 +184,7 @@ class _DeleteAccountScreenState extends ConsumerState<DeleteAccountScreen>
             ),
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildConfirmView() {

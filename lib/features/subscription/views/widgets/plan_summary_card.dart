@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/features/subscription/models/subscription_plan.dart';
+import 'package:edumap_portfolio_project/features/subscription/models/subscription_plan.dart';
 
 class PlanSummary extends StatelessWidget {
   final SubscriptionPlan plan;

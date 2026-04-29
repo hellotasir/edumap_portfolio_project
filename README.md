@@ -63,3 +63,5 @@ The system follows a **progressive interaction model**:
 
 This project is developed for **demonstration and evaluation purposes**.
 Backend services may be: Modified, Rate-limited and Disabled after evaluation.
+
+flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/debug-info

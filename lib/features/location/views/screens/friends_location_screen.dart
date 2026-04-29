@@ -1,15 +1,16 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:edumap_portfolio_project/core/services/local/user_location_service.dart';
+import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_education_app/core/services/local/user_location_service.dart';
-import 'package:flutter_education_app/features/chat/repositories/chat_repository.dart';
-import 'package:flutter_education_app/features/location/models/location_model.dart';
-import 'package:flutter_education_app/features/location/views/screens/distance_map_screen.dart';
-import 'package:flutter_education_app/features/location/views/widgets/empty_friends.dart';
-import 'package:flutter_education_app/features/location/views/widgets/friend_card.dart';
-import 'package:flutter_education_app/features/location/views/widgets/friend_sheet.dart';
-import 'package:flutter_education_app/features/profile/models/profile_model.dart';
-import 'package:flutter_education_app/features/profile/repositories/profile_repository.dart';
-import 'package:flutter_education_app/features/profile/views/screens/profile_screen.dart';
+import 'package:edumap_portfolio_project/features/chat/repositories/chat_repository.dart';
+import 'package:edumap_portfolio_project/features/location/models/location_model.dart';
+import 'package:edumap_portfolio_project/features/location/views/screens/distance_map_screen.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/empty_friends.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/friend_card.dart';
+import 'package:edumap_portfolio_project/features/location/views/widgets/friend_sheet.dart';
+import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
+import 'package:edumap_portfolio_project/features/profile/repositories/profile_repository.dart';
+import 'package:edumap_portfolio_project/features/profile/views/screens/profile_screen.dart';
 
 class FriendsLocationScreen extends StatefulWidget {
   const FriendsLocationScreen({
@@ -128,34 +129,36 @@ class _FriendsLocationScreenState extends State<FriendsLocationScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    return Scaffold(
-      appBar: AppBar(
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: const Text('Track Distance'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: _loading ? null : _loadFriends,
+    return NetworkWidget(
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded),
+            onPressed: () => Navigator.pop(context),
           ),
-        ],
-      ),
-      body: _loading
-          ? const Center(child: CircularProgressIndicator())
-          : _friends.isEmpty
-          ? EmptyFriends(theme: theme)
-          : ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: _friends.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 10),
-              itemBuilder: (_, i) => FriendCard(
-                friend: _friends[i],
-                theme: theme,
-                onTap: () => _showFriendSheet(_friends[i]),
-              ),
+          title: const Text('Track Distance'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.refresh_rounded),
+              onPressed: _loading ? null : _loadFriends,
             ),
+          ],
+        ),
+        body: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : _friends.isEmpty
+            ? EmptyFriends(theme: theme)
+            : ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: _friends.length,
+                separatorBuilder: (_, _) => const SizedBox(height: 10),
+                itemBuilder: (_, i) => FriendCard(
+                  friend: _friends[i],
+                  theme: theme,
+                  onTap: () => _showFriendSheet(_friends[i]),
+                ),
+              ),
+      ),
     );
   }
 }
