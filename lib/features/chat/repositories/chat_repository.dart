@@ -548,42 +548,44 @@ class ChatRepository {
             .snapshots()
             .map((snap) => snap.docs.map((d) => d.id).toSet());
 
-        firestoreSub = Rx.combineLatest2<
-              QuerySnapshot<Map<String, dynamic>>,
-              Set<String>,
-              List<ConversationModel>
-            >(convStream, presenceStream, (convSnap, onlineIds) {
-              final list = convSnap.docs
-                  .map(ConversationModel.fromSnapshot)
-                  .toList();
+        firestoreSub =
+            Rx.combineLatest2<
+                  QuerySnapshot<Map<String, dynamic>>,
+                  Set<String>,
+                  List<ConversationModel>
+                >(convStream, presenceStream, (convSnap, onlineIds) {
+                  final list = convSnap.docs
+                      .map(ConversationModel.fromSnapshot)
+                      .toList();
 
-              list.sort((a, b) {
-                final aOnline = a.participantIds.any(
-                  (id) => id != userId && onlineIds.contains(id),
-                );
-                final bOnline = b.participantIds.any(
-                  (id) => id != userId && onlineIds.contains(id),
-                );
-                if (aOnline != bOnline) return aOnline ? -1 : 1;
-                final aTime = a.lastMessageAt ?? a.createdAt;
-                final bTime = b.lastMessageAt ?? b.createdAt;
-                return bTime.compareTo(aTime);
-              });
+                  list.sort((a, b) {
+                    final aOnline = a.participantIds.any(
+                      (id) => id != userId && onlineIds.contains(id),
+                    );
+                    final bOnline = b.participantIds.any(
+                      (id) => id != userId && onlineIds.contains(id),
+                    );
+                    if (aOnline != bOnline) return aOnline ? -1 : 1;
+                    final aTime = a.lastMessageAt ?? a.createdAt;
+                    final bTime = b.lastMessageAt ?? b.createdAt;
+                    return bTime.compareTo(aTime);
+                  });
 
-              _cache.upsertConversations(list);
+                  _cache.upsertConversations(list);
 
-              final buffer = StringBuffer();
-              buffer.writeln('Conversations Update: ${DateTime.now()}');
-              buffer.writeln('Total: ${list.length}');
-              for (final c in list) {
-                buffer.writeln(
-                  'ID: ${c.id}, LastMsg: ${c.lastMessageAt}, Participants: ${c.participantIds}',
-                );
-              }
-              debugPrint(buffer.toString());
+                  final buffer = StringBuffer();
+                  buffer.writeln('Conversations Update: ${DateTime.now()}');
+                  buffer.writeln('Total: ${list.length}');
+                  for (final c in list) {
+                    buffer.writeln(
+                      'ID: ${c.id}, LastMsg: ${c.lastMessageAt}, Participants: ${c.participantIds}',
+                    );
+                  }
+                  debugPrint(buffer.toString());
 
-              return list;
-            }).listen(controller.add, onError: controller.addError);
+                  return list;
+                })
+                .listen(controller.add, onError: controller.addError);
       },
       onCancel: () => firestoreSub?.cancel(),
     );
@@ -966,12 +968,28 @@ class ChatRepository {
     required File imageFile,
     required String adminUserId,
   }) async {
-    final result = await _storageRepository.uploadGroupPhoto(
-      imageFile: imageFile,
-      adminUserId: adminUserId,
-    );
-    if (result.isFailure) throw Exception(result.error);
-    return result.data!;
+    try {
+      final result = await _storageRepository.uploadGroupPhoto(
+        imageFile: imageFile,
+        adminUserId: adminUserId,
+      );
+
+      if (result.isFailure) {
+        throw Exception(result.error);
+      }
+
+      final url = result.data!;
+
+      if (url.isEmpty) {
+        throw Exception('Empty URL returned from storage');
+      }
+
+      if (!url.contains('supabase.co/storage/v1/object/public/')) {}
+
+      return url;
+    } catch (e) {
+      rethrow;
+    }
   }
 
   Stream<String?> watchTypingUser(String conversationId) {
@@ -1288,9 +1306,7 @@ class ChatRepository {
     }
     await Future.wait(chunks.map(fetchChunk));
 
-    final missing = allFriendIds
-        .where((id) => !foundIds.contains(id))
-        .toList();
+    final missing = allFriendIds.where((id) => !foundIds.contains(id)).toList();
     final missingChunks = <List<String>>[];
     for (var i = 0; i < missing.length; i += 10) {
       missingChunks.add(missing.sublist(i, (i + 10).clamp(0, missing.length)));

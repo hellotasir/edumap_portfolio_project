@@ -192,8 +192,7 @@ packages:
       sha256: a156715e7cd728130c592f30552575908aae5b100005fbc1f0fb16b3c03a3d10
       url: "https://pub.dev"
     source: hosted
-<<<<<<< HEAD
-    version: "4.0.5"
+    version: "4.0.6"
   build_config:
     dependency: transitive
     description:
@@ -218,9 +217,6 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.14.1"
-=======
-    version: "4.0.6"
->>>>>>> b9ec91a85ad447615a911107447348698dc67435
   built_collection:
     dependency: transitive
     description:
@@ -986,10 +982,10 @@ packages:
     dependency: "direct main"
     description:
       name: google_fonts
-      sha256: db9df7a5898d894eeda4c78143f35c30a243558be439518972366880b80bf88e
+      sha256: "4e9391085e524954a51e3625b7c9c7e9851dc3f376603208bb45c24b9a66255d"
       url: "https://pub.dev"
     source: hosted
-    version: "8.0.2"
+    version: "8.1.0"
   google_identity_services_web:
     dependency: transitive
     description:
@@ -1114,18 +1110,18 @@ packages:
     dependency: "direct main"
     description:
       name: image_picker
-      sha256: "784210112be18ea55f69d7076e2c656a4e24949fa9e76429fe53af0c0f4fa320"
+      sha256: "91c025426c2881c551100bce834e201c835a170151545f58d17da5180ca7d9ac"
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.1"
+    version: "1.2.2"
   image_picker_android:
     dependency: transitive
     description:
       name: image_picker_android
-      sha256: "66810af8e99b2657ee98e5c6f02064f69bb63f7a70e343937f70946c5f8c6622"
+      sha256: d5b3e1774af29c9ab00103afb0d4614070f924d2e0057ac867ec98800114793f
       url: "https://pub.dev"
     source: hosted
-    version: "0.8.13+16"
+    version: "0.8.13+17"
   image_picker_for_web:
     dependency: transitive
     description:
@@ -2012,10 +2008,10 @@ packages:
     dependency: transitive
     description:
       name: source_gen
-      sha256: "732792cfd197d2161a65bb029606a46e0a18ff30ef9e141a7a82172b05ea8ecd"
+      sha256: ec37cc0e6694374cbef59ed79685572c870a54ede6fa30a3e420feb3adffea02
       url: "https://pub.dev"
     source: hosted
-    version: "4.2.2"
+    version: "4.2.3"
   source_map_stack_trace:
     dependency: transitive
     description:
@@ -2404,10 +2400,10 @@ packages:
     dependency: transitive
     description:
       name: video_player_platform_interface
-      sha256: "57c5d73173f76d801129d0531c2774052c5a7c11ccb962f1830630decd9f24ec"
+      sha256: "16eaed5268c571c31840dc58ef8da5f0cd4db2a98490c3b8f1cf70122546c6e0"
       url: "https://pub.dev"
     source: hosted
-    version: "6.6.0"
+    version: "6.7.0"
   video_player_web:
     dependency: transitive
     description:
@@ -2428,10 +2424,10 @@ packages:
     dependency: transitive
     description:
       name: vm_service
-      sha256: "046d3928e16fa4dc46e8350415661755ab759d9fc97fc21b5ab295f71e4f0499"
+      sha256: "0016aef94fc66495ac78af5859181e3f3bf2026bd8eecc72b9565601e19ab360"
       url: "https://pub.dev"
     source: hosted
-    version: "15.1.0"
+    version: "15.2.0"
   wakelock_plus:
     dependency: transitive
     description:
@@ -2580,18 +2576,18 @@ packages:
     dependency: transitive
     description:
       name: zego_uikit
-      sha256: c0f47744ead118b3638d429cbc5606f37a35e73954eda9c25b0caf5fef3be8fc
+      sha256: "2acd285b4f4cc95c4a6136692e2c843bf6768f7c67d443baedfe4f9557e6d25c"
       url: "https://pub.dev"
     source: hosted
-    version: "2.28.46"
+    version: "2.28.47"
   zego_uikit_prebuilt_call:
     dependency: "direct main"
     description:
       name: zego_uikit_prebuilt_call
-      sha256: d27d0e6c093579568179db4cdf31cf04abe58e778930a48de017aa66e262b072
+      sha256: "3486010f27e2d00986b5ab9816c41075cdb6ea4d110e11bcd3ab6531581cc1bd"
       url: "https://pub.dev"
     source: hosted
-    version: "4.23.0"
+    version: "4.23.1"
   zego_uikit_signaling_plugin:
     dependency: transitive
     description:
@@ -2604,10 +2600,10 @@ packages:
     dependency: "direct dev"
     description:
       name: zego_zim
-      sha256: c726db33b8b8b6bc2bade4de45341c6edbd8d1b43a904de4754ceb77b741252a
+      sha256: "46c7b3f9fe49e5a967c70a9ad1f251e64e451b08028581f408eef58d80cc9430"
       url: "https://pub.dev"
     source: hosted
-    version: "2.28.0"
+    version: "2.29.0"
   zego_zpns:
     dependency: transitive
     description:

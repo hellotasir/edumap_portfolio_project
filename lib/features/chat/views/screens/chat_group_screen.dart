@@ -66,7 +66,10 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
 
   Future<void> _loadFriends() async {
     if (!mounted) return;
-    setState(() { _isLoading = true; _loadError = null; });
+    setState(() {
+      _isLoading = true;
+      _loadError = null;
+    });
     try {
       final friends = await widget.chatRepository.getFriendsList(
         widget.currentUserId,
@@ -141,13 +144,19 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
     if (_groupImageFile == null) return null;
     setState(() => _isUploadingImage = true);
     try {
-      return await widget.chatRepository.uploadGroupPhoto(
+      final uploadedUrl = await widget.chatRepository.uploadGroupPhoto(
         adminUserId: widget.currentUserId,
         imageFile: _groupImageFile!,
-        
       );
-    } catch (_) {
-      _showSnack('Failed to upload group image');
+
+      if (uploadedUrl.isEmpty) {
+        _showSnack('Failed to upload group image: Invalid URL');
+        return null;
+      }
+
+      return uploadedUrl;
+    } catch (e) {
+      _showSnack('Failed to upload group image: $e');
       return null;
     } finally {
       if (mounted) setState(() => _isUploadingImage = false);
@@ -156,13 +165,25 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
 
   Future<void> _createGroup() async {
     final name = _groupNameController.text.trim();
-    if (name.isEmpty) { _showSnack('Please enter a group name'); return; }
-    if (_selectedIds.isEmpty) { _showSnack('Select at least one member'); return; }
+    if (name.isEmpty) {
+      _showSnack('Please enter a group name');
+      return;
+    }
+    if (_selectedIds.isEmpty) {
+      _showSnack('Select at least one member');
+      return;
+    }
+  
     setState(() => _isCreating = true);
     try {
+   
+    
       final groupPhotoUrl = await _uploadGroupImage();
-      final conversation =
-          await widget.chatRepository.createGroupConversation(
+      if (_groupImageFile != null && groupPhotoUrl == null) {
+        _showSnack('Group image upload failed, but continuing...');
+      }
+
+      final conversation = await widget.chatRepository.createGroupConversation(
         adminUserId: widget.currentUserId,
         adminUsername: widget.currentUsername,
         groupName: name,
@@ -170,6 +191,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
         memberUsernames: _selectedUsernames,
         groupPhoto: groupPhotoUrl,
       );
+    
+    
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
@@ -183,8 +206,8 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
           ),
         ),
       );
-    } catch (_) {
-      _showSnack('Failed to create group. Please try again.');
+    } catch (e) {
+      _showSnack('Failed to create group: ${e.toString()}');
       if (mounted) setState(() => _isCreating = false);
     }
   }
@@ -208,234 +231,234 @@ class _CreateGroupScreenState extends State<CreateGroupScreen>
     final isBusy = _isCreating || _isUploadingImage;
 
     return NetworkWidget(
-        child: Scaffold(
+      child: Scaffold(
+        backgroundColor: cs.surface,
+        appBar: AppBar(
           backgroundColor: cs.surface,
-          appBar: AppBar(
-            backgroundColor: cs.surface,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            titleSpacing: 0,
-            leading: IconButton(
-              icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-              onPressed: () => Navigator.pop(context),
+          surfaceTintColor: Colors.transparent,
+          elevation: 0,
+          titleSpacing: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
+            onPressed: () => Navigator.pop(context),
+          ),
+          title: Text(
+            'New Group',
+            style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+          ),
+          actions: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: _selectedIds.isEmpty
+                  ? const SizedBox.shrink()
+                  : Padding(
+                      padding: const EdgeInsets.only(right: 12),
+                      child: FilledButton(
+                        onPressed: isBusy ? null : _createGroup,
+                        style: FilledButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 8,
+                          ),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        ),
+                        child: isBusy
+                            ? SizedBox(
+                                width: 14,
+                                height: 14,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: cs.onPrimary,
+                                ),
+                              )
+                            : Text(
+                                'Create',
+                                style: tt.labelMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                  color: cs.onPrimary,
+                                ),
+                              ),
+                      ),
+                    ),
             ),
-            title: Text(
-              'New Group',
-              style: tt.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-            actions: [
-              AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                child: _selectedIds.isEmpty
-                    ? const SizedBox.shrink()
-                    : Padding(
-                        padding: const EdgeInsets.only(right: 12),
-                        child: FilledButton(
-                          onPressed: isBusy ? null : _createGroup,
-                          style: FilledButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 18,
-                              vertical: 8,
+          ],
+        ),
+        body: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+              child: Row(
+                children: [
+                  _GroupAvatarPicker(
+                    imageFile: _groupImageFile,
+                    colorScheme: cs,
+                    onTap: _pickGroupImage,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Group name',
+                          style: tt.labelSmall?.copyWith(
+                            color: cs.onSurface.withValues(alpha: 0.45),
+                            letterSpacing: 0.3,
+                          ),
+                        ),
+                        TextField(
+                          controller: _groupNameController,
+                          autocorrect: true,
+                          textCapitalization: TextCapitalization.words,
+                          style: tt.bodyLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            height: 1.3,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: 'e.g. Study Squad',
+                            hintStyle: tt.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              color: cs.onSurface.withValues(alpha: 0.25),
                             ),
-                            minimumSize: Size.zero,
-                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.only(
+                              top: 4,
+                              bottom: 6,
+                            ),
+                            enabledBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: cs.outlineVariant,
+                                width: 1,
+                              ),
+                            ),
+                            focusedBorder: UnderlineInputBorder(
+                              borderSide: BorderSide(
+                                color: cs.primary,
+                                width: 1.5,
+                              ),
                             ),
                           ),
-                          child: isBusy
-                              ? SizedBox(
-                                  width: 14,
-                                  height: 14,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: cs.onPrimary,
-                                  ),
-                                )
-                              : Text(
-                                  'Create',
-                                  style: tt.labelMedium?.copyWith(
-                                    fontWeight: FontWeight.w600,
-                                    color: cs.onPrimary,
-                                  ),
-                                ),
                         ),
-                      ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
-          body: Column(
-            children: [
+            ),
+            const SizedBox(height: 14),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearch,
+                style: tt.bodyMedium,
+                decoration: InputDecoration(
+                  hintText: 'Search friends…',
+                  hintStyle: tt.bodyMedium?.copyWith(
+                    color: cs.onSurface.withValues(alpha: 0.38),
+                  ),
+                  filled: true,
+                  fillColor: cs.surfaceContainerHighest,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: BorderSide(
+                      color: cs.primary.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    size: 18,
+                    color: cs.onSurface.withValues(alpha: 0.4),
+                  ),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 40,
+                    minHeight: 36,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 16,
+                            color: cs.onSurface.withValues(alpha: 0.5),
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            _onSearch('');
+                          },
+                        )
+                      : null,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            AnimatedSize(
+              duration: const Duration(milliseconds: 180),
+              curve: Curves.easeOut,
+              child: _selectedIds.isEmpty
+                  ? const SizedBox.shrink()
+                  : _SelectedChips(
+                      selectedIds: _selectedIds,
+                      selectedUsernames: _selectedUsernames,
+                      onRemove: (id) => setState(() {
+                        _selectedIds.remove(id);
+                        _selectedUsernames.remove(id);
+                      }),
+                    ),
+            ),
+            if (!_isLoading && _friends.isNotEmpty)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 6, 16, 0),
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 2),
                 child: Row(
                   children: [
-                    _GroupAvatarPicker(
-                      imageFile: _groupImageFile,
-                      colorScheme: cs,
-                      onTap: _pickGroupImage,
+                    Text(
+                      'FRIENDS',
+                      style: tt.labelSmall?.copyWith(
+                        color: cs.onSurface.withValues(alpha: 0.4),
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.8,
+                      ),
                     ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            'Group name',
-                            style: tt.labelSmall?.copyWith(
-                              color: cs.onSurface.withValues(alpha: 0.45),
-                              letterSpacing: 0.3,
-                            ),
-                          ),
-                          TextField(
-                            controller: _groupNameController,
-                            autocorrect: true,
-                            textCapitalization: TextCapitalization.words,
-                            style: tt.bodyLarge?.copyWith(
-                              fontWeight: FontWeight.w600,
-                              height: 1.3,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'e.g. Study Squad',
-                              hintStyle: tt.bodyLarge?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: cs.onSurface.withValues(alpha: 0.25),
-                              ),
-                              isDense: true,
-                              contentPadding: const EdgeInsets.only(
-                                top: 4,
-                                bottom: 6,
-                              ),
-                              enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: cs.outlineVariant,
-                                  width: 1,
-                                ),
-                              ),
-                              focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                  color: cs.primary,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1,
+                      ),
+                      decoration: BoxDecoration(
+                        color: cs.primaryContainer,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        '${_searchResults.length}',
+                        style: tt.labelSmall?.copyWith(
+                          color: cs.onPrimaryContainer,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 14),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: _onSearch,
-                  style: tt.bodyMedium,
-                  decoration: InputDecoration(
-                    hintText: 'Search friends…',
-                    hintStyle: tt.bodyMedium?.copyWith(
-                      color: cs.onSurface.withValues(alpha: 0.38),
-                    ),
-                    filled: true,
-                    fillColor: cs.surfaceContainerHighest,
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 11,
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide.none,
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(14),
-                      borderSide: BorderSide(
-                        color: cs.primary.withValues(alpha: 0.5),
-                        width: 1,
-                      ),
-                    ),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      size: 18,
-                      color: cs.onSurface.withValues(alpha: 0.4),
-                    ),
-                    prefixIconConstraints: const BoxConstraints(
-                      minWidth: 40,
-                      minHeight: 36,
-                    ),
-                    suffixIcon: _searchController.text.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(
-                              Icons.close_rounded,
-                              size: 16,
-                              color: cs.onSurface.withValues(alpha: 0.5),
-                            ),
-                            onPressed: () {
-                              _searchController.clear();
-                              _onSearch('');
-                            },
-                          )
-                        : null,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              AnimatedSize(
-                duration: const Duration(milliseconds: 180),
-                curve: Curves.easeOut,
-                child: _selectedIds.isEmpty
-                    ? const SizedBox.shrink()
-                    : _SelectedChips(
-                        selectedIds: _selectedIds,
-                        selectedUsernames: _selectedUsernames,
-                        onRemove: (id) => setState(() {
-                          _selectedIds.remove(id);
-                          _selectedUsernames.remove(id);
-                        }),
-                      ),
-              ),
-              if (!_isLoading && _friends.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 2),
-                  child: Row(
-                    children: [
-                      Text(
-                        'FRIENDS',
-                        style: tt.labelSmall?.copyWith(
-                          color: cs.onSurface.withValues(alpha: 0.4),
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.8,
-                        ),
-                      ),
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 1,
-                        ),
-                        decoration: BoxDecoration(
-                          color: cs.primaryContainer,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          '${_searchResults.length}',
-                          style: tt.labelSmall?.copyWith(
-                            color: cs.onPrimaryContainer,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              Expanded(child: _buildBody(cs, tt)),
-            ],
-          ),
+            Expanded(child: _buildBody(cs, tt)),
+          ],
         ),
-      );
+      ),
+    );
   }
 
   Widget _buildBody(ColorScheme cs, TextTheme tt) {
@@ -571,6 +594,7 @@ class _FriendTile extends StatelessWidget {
         ),
         child: Row(
           children: [
+            // Inside _FriendTile's build method, replace the Stack with CircleAvatar:
             Stack(
               children: [
                 CircleAvatar(
@@ -578,6 +602,13 @@ class _FriendTile extends StatelessWidget {
                   backgroundColor: cs.surfaceContainerHighest,
                   backgroundImage: photoUrl.isNotEmpty
                       ? NetworkImage(photoUrl)
+                      : null,
+                  // ADD THIS ERROR HANDLER
+                  onBackgroundImageError: photoUrl.isNotEmpty
+                      ? (exception, stackTrace) {
+                          debugPrint('Failed to load friend photo: $photoUrl');
+                          debugPrint('Error: $exception');
+                        }
                       : null,
                   child: photoUrl.isEmpty
                       ? Text(
@@ -608,8 +639,7 @@ class _FriendTile extends StatelessWidget {
                 children: [
                   Text(
                     displayName,
-                    style: tt.bodyMedium
-                        ?.copyWith(fontWeight: FontWeight.w600),
+                    style: tt.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),

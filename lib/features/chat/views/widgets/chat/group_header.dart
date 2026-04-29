@@ -29,6 +29,14 @@ class GroupHeader extends StatelessWidget {
             backgroundImage: hasPhoto
                 ? NetworkImage(conversation.groupPhoto!)
                 : null,
+            onBackgroundImageError: hasPhoto
+                ? (exception, stackTrace) {
+                    debugPrint(
+                      'Failed to load group photo: ${conversation.groupPhoto}',
+                    );
+                    debugPrint('Error: $exception');
+                  }
+                : null,
             child: !hasPhoto
                 ? Icon(
                     Icons.group_rounded,
