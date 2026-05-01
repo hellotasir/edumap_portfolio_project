@@ -14,6 +14,8 @@ class AiAssistantScreen extends ConsumerStatefulWidget {
     required this.userId,
     required this.username,
     this.profilePhoto,
+
+    this.role = 'student',
     this.assistantMode,
     this.customTone,
   });
@@ -21,6 +23,9 @@ class AiAssistantScreen extends ConsumerStatefulWidget {
   final String userId;
   final String username;
   final String? profilePhoto;
+
+  final String role;
+
   final String? assistantMode;
   final String? customTone;
 
@@ -38,7 +43,10 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
   @override
   void didUpdateWidget(AiAssistantScreen old) {
     super.didUpdateWidget(old);
-    if (old.userId != widget.userId || old.username != widget.username) {
+    if (old.userId != widget.userId ||
+        old.username != widget.username ||
+        old.profilePhoto != widget.profilePhoto ||
+        old.role != widget.role) {
       _applyConfig();
     }
   }
@@ -49,6 +57,8 @@ class _AiAssistantScreenState extends ConsumerState<AiAssistantScreen> {
       final next = AiConfig(
         userId: widget.userId,
         username: widget.username,
+        profilePhoto: widget.profilePhoto,
+        role: widget.role,
         assistantMode: widget.assistantMode ?? AiPrompts.modeGeneral,
         customTone: widget.customTone,
       );

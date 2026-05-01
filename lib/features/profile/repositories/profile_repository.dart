@@ -3,6 +3,8 @@ import 'package:edumap_portfolio_project/features/profile/models/profile_model.d
 import 'package:edumap_portfolio_project/features/app/repositories/database_repository.dart';
 
 class ProfileRepository implements DatabaseRepository<ProfileModel> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   @override
   List<String> get collectionPath => ['profiles'];
 
@@ -56,6 +58,50 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
         'instructor_profile': _instructorToMap(model.instructorProfile),
         'system': _systemToMap(model.system),
       };
+
+  Future<void> update(String documentId, ProfileModel model) async {
+    final results = await Future.wait([
+      _firestore
+          .collection('friend_requests')
+          .where('from_user_id', isEqualTo: model.userId)
+          .limit(1)
+          .get(),
+      _firestore
+          .collection('friend_requests')
+          .where('to_user_id', isEqualTo: model.userId)
+          .limit(1)
+          .get(),
+    ]);
+
+    final hasAnyFriendRequest =
+        results[0].docs.isNotEmpty || results[1].docs.isNotEmpty;
+
+    final Map<String, dynamic> updateData;
+
+    if (hasAnyFriendRequest) {
+      updateData = {
+        'user_id': model.userId,
+        'email': model.email,
+        'phone': model.phone,
+        'password_hash': model.passwordHash,
+        'current_mode': model.currentMode,
+        'available_modes': model.availableModes,
+        'is_verified': model.isVerified,
+        'status': model.status,
+        'created_at': Timestamp.fromDate(model.createdAt),
+        'updated_at': Timestamp.fromDate(model.updatedAt),
+        'last_login': Timestamp.fromDate(model.lastLogin),
+        'profile': _profileToMap(model.profile),
+        'student_profile': _studentToMap(model.studentProfile),
+        'instructor_profile': _instructorToMap(model.instructorProfile),
+        'system': _systemToMap(model.system),
+      };
+    } else {
+      updateData = toMap(model);
+    }
+
+    await _firestore.collection('profiles').doc(documentId).update(updateData);
+  }
 
   ProfileInfo _parseProfile(Map<String, dynamic>? data) {
     data ??= {};

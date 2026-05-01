@@ -38,6 +38,6 @@ Some backend services may be:
 - Disabled after evaluation 
 - Some bugs may still exist but solved once identified.
 
-## Project Development duration (from scratch with AI assistance): 2 months
-## Project Maintenance duration : Life-time
+## Project Development duration (from scratch with AI assistance): 2 months (March 16, 2026 - April 30, 2026)
+## Project Maintenance duration : Life-time (May 1, 2026)
 

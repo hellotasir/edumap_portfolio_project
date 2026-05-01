@@ -58,16 +58,29 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
     setState(() => _isLoading = true);
     try {
       final results = await widget.chatRepository.searchUsersByUsername(query);
-      setState(() {
-        _results = results.where((r) {
+
+      final blockedChecks = await Future.wait(
+        results.map((r) {
           final id = r['user_id'] as String? ?? r['id'] as String? ?? '';
-          if (id == widget.currentUserId) return false;
-          if (widget.isGroupAddMode && widget.existingMemberIds.contains(id)) {
-            return false;
+          return widget.chatRepository.isBlockedBy(id, widget.currentUserId);
+        }),
+      );
+
+      if (mounted) {
+        setState(() {
+          final filtered = <Map<String, dynamic>>[];
+          for (var i = 0; i < results.length; i++) {
+            final r = results[i];
+            final id = r['user_id'] as String? ?? r['id'] as String? ?? '';
+            if (id == widget.currentUserId) continue;
+            if (widget.isGroupAddMode && widget.existingMemberIds.contains(id))
+              continue;
+            if (blockedChecks[i]) continue;
+            filtered.add(r);
           }
-          return true;
-        }).toList();
-      });
+          _results = filtered;
+        });
+      }
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -240,6 +253,9 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
       itemBuilder: (context, i) {
         final user = _results[i];
         return _UserResultTile(
+          key: ValueKey(
+            user['user_id'] as String? ?? user['id'] as String? ?? '',
+          ),
           user: user,
           currentUserId: widget.currentUserId,
           currentUsername: widget.currentUsername,
@@ -255,6 +271,7 @@ class _UserSearchScreenState extends State<UserSearchScreen> {
 
 class _UserResultTile extends StatefulWidget {
   const _UserResultTile({
+    super.key,
     required this.user,
     required this.currentUserId,
     required this.currentUsername,
@@ -279,6 +296,7 @@ class _UserResultTile extends StatefulWidget {
 class _UserResultTileState extends State<_UserResultTile> {
   _FriendStatus _status = _FriendStatus.none;
   String? _blockedRequestId;
+  String? _pendingRequestId;
   bool _loading = true;
   bool _actionLoading = false;
 
@@ -315,6 +333,7 @@ class _UserResultTileState extends State<_UserResultTile> {
 
     _FriendStatus status;
     String? blockedRequestId;
+    String? pendingRequestId;
 
     if (blockedRequest != null) {
       status = _FriendStatus.blocked;
@@ -325,6 +344,7 @@ class _UserResultTileState extends State<_UserResultTile> {
         request.status == FriendRequestStatus.pending) {
       if (request.fromUserId == widget.currentUserId) {
         status = _FriendStatus.requestSent;
+        pendingRequestId = request.id;
       } else {
         status = _FriendStatus.requestReceived;
       }
@@ -335,6 +355,7 @@ class _UserResultTileState extends State<_UserResultTile> {
     setState(() {
       _status = status;
       _blockedRequestId = blockedRequestId;
+      _pendingRequestId = pendingRequestId;
       _loading = false;
     });
   }
@@ -343,14 +364,19 @@ class _UserResultTileState extends State<_UserResultTile> {
     if (_actionLoading) return;
     setState(() => _actionLoading = true);
     try {
-      await widget.chatRepository.sendFriendRequest(
+      final sent = await widget.chatRepository.sendFriendRequest(
         fromUserId: widget.currentUserId,
         fromUsername: widget.currentUsername,
         fromProfilePhoto: widget.currentProfilePhoto,
         toUserId: _otherUserId,
         toUsername: _otherUsername,
       );
-      if (mounted) setState(() => _status = _FriendStatus.requestSent);
+      if (mounted) {
+        setState(() {
+          _status = _FriendStatus.requestSent;
+          _pendingRequestId = sent.id;
+        });
+      }
     } on DuplicateFriendRequestException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -363,6 +389,22 @@ class _UserResultTileState extends State<_UserResultTile> {
         ),
       );
       await _checkFriendStatus();
+    } finally {
+      if (mounted) setState(() => _actionLoading = false);
+    }
+  }
+
+  Future<void> _cancelRequest() async {
+    if (_actionLoading || _pendingRequestId == null) return;
+    setState(() => _actionLoading = true);
+    try {
+      await widget.chatRepository.cancelFriendRequest(_pendingRequestId!);
+      if (mounted) {
+        setState(() {
+          _status = _FriendStatus.none;
+          _pendingRequestId = null;
+        });
+      }
     } finally {
       if (mounted) setState(() => _actionLoading = false);
     }
@@ -518,11 +560,35 @@ class _UserResultTileState extends State<_UserResultTile> {
           isMuted: false,
         );
       case _FriendStatus.requestSent:
-        return _StatusChip(
-          label: 'Requested',
-          colorScheme: colorScheme,
-          textTheme: textTheme,
-          isMuted: true,
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _StatusChip(
+              label: 'Requested',
+              colorScheme: colorScheme,
+              textTheme: textTheme,
+              isMuted: true,
+            ),
+            const SizedBox(width: 6),
+            GestureDetector(
+              onTap: _cancelRequest,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: colorScheme.errorContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.close_rounded,
+                  size: 14,
+                  color: colorScheme.onErrorContainer,
+                ),
+              ),
+            ),
+          ],
         );
       case _FriendStatus.requestReceived:
         return _StatusChip(
@@ -615,7 +681,6 @@ class _StatusChip extends StatelessWidget {
   }
 }
 
-
 class _EmptyState extends StatelessWidget {
   const _EmptyState({
     required this.icon,
@@ -676,4 +741,3 @@ class _EmptyState extends StatelessWidget {
     );
   }
 }
-

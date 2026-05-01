@@ -19,11 +19,11 @@ class FullscreenVideoPlayerState extends State<FullscreenVideoPlayer> {
     _controller = VideoPlayerController.networkUrl(Uri.parse(widget.url));
     _controller.initialize().then((_) {
       if (mounted) {
+        _controller.setLooping(false);
         setState(() => _initialized = true);
         _controller.play();
       }
     });
-    _controller.setLooping(false);
   }
 
   @override
@@ -50,11 +50,13 @@ class FullscreenVideoPlayerState extends State<FullscreenVideoPlayer> {
                   children: [
                     VideoPlayer(_controller),
                     GestureDetector(
-                      onTap: () => setState(
-                        () => _controller.value.isPlaying
+                      onTap: () {
+                        // ✅ controller called outside setState
+                        _controller.value.isPlaying
                             ? _controller.pause()
-                            : _controller.play(),
-                      ),
+                            : _controller.play();
+                        setState(() {});
+                      },
                       child: Container(
                         color: Colors.transparent,
                         child: _controller.value.isPlaying

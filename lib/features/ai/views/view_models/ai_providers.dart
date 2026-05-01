@@ -18,12 +18,19 @@ class AiConfig {
   const AiConfig({
     required this.userId,
     required this.username,
+    this.profilePhoto,
+    this.role = 'student',
     this.assistantMode = AiPrompts.modeGeneral,
     this.customTone,
   });
 
   final String userId;
   final String username;
+
+  final String? profilePhoto;
+
+  final String role;
+
   final String assistantMode;
   final String? customTone;
 
@@ -32,11 +39,20 @@ class AiConfig {
       other is AiConfig &&
       other.userId == userId &&
       other.username == username &&
+      other.profilePhoto == profilePhoto &&
+      other.role == role &&
       other.assistantMode == assistantMode &&
       other.customTone == customTone;
 
   @override
-  int get hashCode => Object.hash(userId, username, assistantMode, customTone);
+  int get hashCode => Object.hash(
+    userId,
+    username,
+    profilePhoto,
+    role,
+    assistantMode,
+    customTone,
+  );
 }
 
 final aiConfigProvider = StateProvider<AiConfig?>((ref) => null);
@@ -51,6 +67,8 @@ final aiChatServiceProvider = Provider<AiChatService?>((ref) {
     chatRepository: ref.watch(chatRepositoryProvider),
     userId: config.userId,
     username: config.username,
+    profilePhoto: config.profilePhoto,
+    role: config.role,
     assistantMode: config.assistantMode,
     customTone: config.customTone,
   );

@@ -1,5 +1,4 @@
-// ignore_for_file: curly_braces_in_flow_control_structures, use_build_context_synchronously, deprecated_member_use
-
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/mfa_widget.dart';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
@@ -8,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
 import 'package:edumap_portfolio_project/features/profile/repositories/profile_repository.dart';
 import 'package:edumap_portfolio_project/core/services/cloud/database_service.dart';
+import 'dart:async';
 
 class ProfileSettingsScreen extends StatefulWidget {
   const ProfileSettingsScreen({super.key, this.profile});
@@ -25,7 +25,11 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   late String _selectedMode;
   bool _saving = false;
   bool _dirty = false;
+  bool _checkingUsername = false;
+  bool _usernameAvailable = true;
+  String? _usernameError;
   String _gender = 'Prefer not to say';
+  Timer? _debounceTimer;
 
   final _fullNameCtrl = TextEditingController();
   final _usernameCtrl = TextEditingController();
@@ -73,12 +77,16 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _selectedMode = widget.profile?.currentMode ?? 'student';
     if (widget.profile != null) _populate(widget.profile!); 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      for (final c in _controllers) c.addListener(_onChanged);
+      for (final c in _controllers) {
+        if (c != _usernameCtrl) c.addListener(_onChanged);
+      }
+      _usernameCtrl.addListener(_onUsernameChanged);
     });
   }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     for (final c in _controllers) {
       c.dispose();
     }
@@ -113,11 +121,79 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     if (mounted && !_dirty) setState(() => _dirty = true);
   }
 
+  void _onUsernameChanged() {
+    _onChanged();
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 500), () {
+      _checkUsernameAvailability();
+    });
+  }
+
+  Future<void> _checkUsernameAvailability() async {
+    final username = _usernameCtrl.text.trim();
+
+    if (username.isEmpty) {
+      setState(() {
+        _usernameAvailable = true;
+        _usernameError = null;
+        _checkingUsername = false;
+      });
+      return;
+    }
+
+    if (widget.profile?.username == username) {
+      setState(() {
+        _usernameAvailable = true;
+        _usernameError = null;
+        _checkingUsername = false;
+      });
+      return;
+    }
+
+    setState(() => _checkingUsername = true);
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('profiles')
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+
+      if (!mounted) return;
+
+      final exists = querySnapshot.docs.isNotEmpty;
+      setState(() {
+        _usernameAvailable = !exists;
+        _usernameError = exists ? 'Username already taken' : null;
+        _checkingUsername = false;
+      });
+    } catch (e) {
+      debugPrint('[ProfileSettingsScreen] Username check error: $e');
+      if (!mounted) return;
+      setState(() {
+        _usernameAvailable = true;
+        _usernameError = null;
+        _checkingUsername = false;
+      });
+    }
+  }
+
   List<String> _splitComma(String s) =>
       s.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
+  final _repo = ProfileRepository();
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    if (!_usernameAvailable) {
+      _showSnack('Please choose a different username', error: true);
+      return;
+    }
+
+    if (_checkingUsername) {
+      _showSnack('Checking username availability...', error: true);
+      return;
+    }
 
     setState(() => _saving = true);
     try {
@@ -128,86 +204,109 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           : [newMode];
 
       if (isUpdate) {
-        await _service.update(widget.profile!.id!, {
-        'current_mode': newMode,
-        'available_modes': updatedModes,
-        'username': _usernameCtrl.text.trim(),
-        'phone': _phoneCtrl.text.trim(),
-        'profile.full_name': _fullNameCtrl.text.trim(),
-        'profile.bio': _bioCtrl.text.trim(),
-        'profile.gender': _gender,
-        'profile.languages': _splitComma(_languagesCtrl.text),
-        'profile.location.country': _countryCtrl.text.trim(),
-        'profile.location.city': _cityCtrl.text.trim(),
-        'profile.location.timezone': _timezoneCtrl.text.trim(),
-        'profile.social_links.linkedin': _linkedinCtrl.text.trim(),
-        'profile.social_links.github': _githubCtrl.text.trim(),
-        'profile.social_links.website': _websiteCtrl.text.trim(),
-        'instructor_profile.headline': _headlineCtrl.text.trim(),
-        'instructor_profile.years_of_experience':
-            int.tryParse(_yearsCtrl.text.trim()) ?? 0,
-        'instructor_profile.expertise': _splitComma(_expertiseCtrl.text),
-        'student_profile.interests': _splitComma(_interestsCtrl.text),
-        'student_profile.current_level': _levelCtrl.text.trim().isNotEmpty
-            ? _levelCtrl.text.trim()
-            : 'beginner',
-        'updated_at': DateTime.now(),
-      });
+        final updated = ProfileModel(
+          id: widget.profile!.id,
+          userId: widget.profile!.userId,
+          username: _usernameCtrl.text.trim(),
+          email: widget.profile!.email,
+          phone: _phoneCtrl.text.trim(),
+          passwordHash: widget.profile!.passwordHash,
+          currentMode: newMode,
+          availableModes: updatedModes,
+          isVerified: widget.profile!.isVerified,
+          status: widget.profile!.status,
+          createdAt: widget.profile!.createdAt,
+          updatedAt: DateTime.now(),
+          lastLogin: widget.profile!.lastLogin,
+          profile: ProfileInfo(
+            fullName: _fullNameCtrl.text.trim(),
+            profilePhoto: widget.profile!.profile.profilePhoto,
+            coverPhoto: widget.profile!.profile.coverPhoto,
+            bio: _bioCtrl.text.trim(),
+            dateOfBirth: null,
+            gender: _gender,
+            languages: _splitComma(_languagesCtrl.text),
+            location: Location(
+              country: _countryCtrl.text.trim(),
+              city: _cityCtrl.text.trim(),
+              timezone: _timezoneCtrl.text.trim(),
+            ),
+            socialLinks: SocialLinks(
+              linkedin: _linkedinCtrl.text.trim(),
+              github: _githubCtrl.text.trim(),
+              website: _websiteCtrl.text.trim(),
+            ),
+          ),
+          studentProfile: StudentProfile(
+            isActive: newMode == 'student',
+            interests: _splitComma(_interestsCtrl.text),
+            currentLevel: _levelCtrl.text.trim().isNotEmpty
+                ? _levelCtrl.text.trim()
+                : 'beginner',
+          ),
+          instructorProfile: InstructorProfile(
+            isActive: newMode == 'instructor',
+            headline: _headlineCtrl.text.trim(),
+            expertise: _splitComma(_expertiseCtrl.text),
+            yearsOfExperience: int.tryParse(_yearsCtrl.text.trim()) ?? 0,
+          ),
+          system: widget.profile!.system,
+        );
+
+        await _repo.update(widget.profile!.id!, updated);
       } else {
-      
         final userId = AuthRepository().currentUser?.id ?? '';
         final now = DateTime.now();
 
         final newProfile = ProfileModel(
           id: null,
           userId: userId,
-        username: _usernameCtrl.text.trim(),
-          email: '',        
-        phone: _phoneCtrl.text.trim(),
+          username: _usernameCtrl.text.trim(),
+          email: '',
+          phone: _phoneCtrl.text.trim(),
           passwordHash: '',
-        currentMode: newMode,
-        availableModes: updatedModes,
+          currentMode: newMode,
+          availableModes: updatedModes,
           isVerified: false,
           status: 'active',
           createdAt: now,
           updatedAt: now,
           lastLogin: now,
           profile: ProfileInfo(
-          fullName: _fullNameCtrl.text.trim(),
+            fullName: _fullNameCtrl.text.trim(),
             profilePhoto: '',
             coverPhoto: '',
-          bio: _bioCtrl.text.trim(),
+            bio: _bioCtrl.text.trim(),
             dateOfBirth: null,
-          gender: _gender,
-          languages: _splitComma(_languagesCtrl.text),
-          location: Location(
-            country: _countryCtrl.text.trim(),
-            city: _cityCtrl.text.trim(),
-            timezone: _timezoneCtrl.text.trim(),
+            gender: _gender,
+            languages: _splitComma(_languagesCtrl.text),
+            location: Location(
+              country: _countryCtrl.text.trim(),
+              city: _cityCtrl.text.trim(),
+              timezone: _timezoneCtrl.text.trim(),
+            ),
+            socialLinks: SocialLinks(
+              linkedin: _linkedinCtrl.text.trim(),
+              github: _githubCtrl.text.trim(),
+              website: _websiteCtrl.text.trim(),
+            ),
           ),
-          socialLinks: SocialLinks(
-            linkedin: _linkedinCtrl.text.trim(),
-            github: _githubCtrl.text.trim(),
-            website: _websiteCtrl.text.trim(),
-          ),
-        ),
-        studentProfile: StudentProfile(
+          studentProfile: StudentProfile(
             isActive: newMode == 'student',
-          interests: _splitComma(_interestsCtrl.text),
-          currentLevel: _levelCtrl.text.trim().isNotEmpty
-              ? _levelCtrl.text.trim()
-              : 'beginner',
-        ),
-        instructorProfile: InstructorProfile(
-          isActive: newMode == 'instructor',
-          headline: _headlineCtrl.text.trim(),
-          expertise: _splitComma(_expertiseCtrl.text),
-          yearsOfExperience: int.tryParse(_yearsCtrl.text.trim()) ?? 0,
-        ),
+            interests: _splitComma(_interestsCtrl.text),
+            currentLevel: _levelCtrl.text.trim().isNotEmpty
+                ? _levelCtrl.text.trim()
+                : 'beginner',
+          ),
+          instructorProfile: InstructorProfile(
+            isActive: newMode == 'instructor',
+            headline: _headlineCtrl.text.trim(),
+            expertise: _splitComma(_expertiseCtrl.text),
+            yearsOfExperience: int.tryParse(_yearsCtrl.text.trim()) ?? 0,
+          ),
           system: SystemInfo(isBanned: false, isFeaturedInstructor: false),
-      );
+        );
 
-  
         await _service.add(newProfile);
       }
 
@@ -365,6 +464,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     hint: 'john_doe',
                     required: true,
                     prefixText: '@',
+                    suffixIcon: _checkingUsername
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : (_usernameCtrl.text.trim().isNotEmpty &&
+                              _usernameAvailable &&
+                              _usernameCtrl.text.trim() !=
+                                  widget.profile?.username)
+                        ? const Icon(
+                            Icons.check_circle,
+                            color: Colors.green,
+                            size: 18,
+                          )
+                        : null,
+                    errorText: _usernameError,
                   ),
                   _Field(
                     label: 'Bio',
@@ -597,6 +713,8 @@ class _Field extends StatelessWidget {
     this.helperText,
     this.inputFormatters,
     this.prefixIcon,
+    this.suffixIcon,
+    this.errorText,
   });
 
   final String label;
@@ -609,6 +727,8 @@ class _Field extends StatelessWidget {
   final String? helperText;
   final List<TextInputFormatter>? inputFormatters;
   final IconData? prefixIcon;
+  final Widget? suffixIcon;
+  final String? errorText;
 
   @override
   Widget build(BuildContext context) {
@@ -628,9 +748,20 @@ class _Field extends StatelessWidget {
           hintText: hint,
           prefixText: prefixText,
           helperText: helperText,
+          errorText: errorText,
           prefixIcon: prefixIcon != null
               ? Icon(prefixIcon, size: 16, color: cs.onSurfaceVariant)
               : null,
+          suffixIcon: suffixIcon != null
+              ? Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: suffixIcon,
+                )
+              : null,
+          suffixIconConstraints: const BoxConstraints(
+            minWidth: 24,
+            minHeight: 24,
+          ),
           prefixIconConstraints: const BoxConstraints(
             minWidth: 36,
             minHeight: 36,

@@ -39,6 +39,8 @@ lib/firebase_options.dart
 firebase.json
 .firebaserc
 firestore.rules
+symbols
+symbols/*
 
 # Symbolication related
 app.*.symbols

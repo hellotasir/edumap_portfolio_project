@@ -44,6 +44,8 @@ class AiChatService {
     required ChatRepository chatRepository,
     required String userId,
     required String username,
+    String? profilePhoto,
+    String role = 'student',
     String assistantMode = AiPrompts.modeGeneral,
     String? customTone,
   }) : _executor = AiToolExecutor(chatRepository),
@@ -53,6 +55,8 @@ class AiChatService {
     _systemPrompt = AiPrompts.buildSystemPrompt(
       userId: userId,
       username: username,
+      profilePhoto: profilePhoto,
+      role: role,
       mode: assistantMode,
       customTone: customTone,
     );
@@ -198,7 +202,6 @@ class AiChatService {
       }
     }
 
-    // Handle typed exceptions from ChatRepository directly when they bubble up
     if (e is ToxicityException) {
       return e.banned
           ? 'Your account has been banned due to repeated toxic behavior.'
@@ -215,13 +218,14 @@ class AiChatService {
     }
 
     final msg = e.toString().toLowerCase();
+
     if (msg.contains('timeout') || msg.contains('timed out')) {
       return 'The request timed out. Please check your connection and try again.';
     }
     if (msg.contains('socketexception') || msg.contains('network')) {
       return 'Network error. Please check your internet connection.';
     }
-    // String-based fallbacks for exceptions that surface via tool result error strings
+
     if (msg.contains('toxicityexception')) {
       if (msg.contains('banned')) {
         return 'Your account has been banned due to repeated toxic behavior.';
@@ -237,6 +241,14 @@ class AiChatService {
     if (msg.contains('busyexception')) {
       return 'Please wait for the previous action to complete before trying again.';
     }
+
+    if (msg.contains('is_user_banned') && msg.contains('true')) {
+      return 'That user account is currently banned.';
+    }
+    if (msg.contains('is_blocked_by') && msg.contains('true')) {
+      return 'You cannot interact with that user right now.';
+    }
+
     return 'Something went wrong. Please try again.';
   }
 }

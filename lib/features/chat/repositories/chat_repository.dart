@@ -342,6 +342,9 @@ class ChatRepository {
   final _SerialQueue _sendQueue = _SerialQueue();
   final _LruCache<String, Map<String, dynamic>> _profileCache = _LruCache(128);
 
+  DateTime? _lastUsernameSyncAt;
+  static const _usernameSyncCooldown = Duration(minutes: 2);
+
   SupabaseClient get _supabase => Supabase.instance.client;
 
   CollectionReference<Map<String, dynamic>> get _conversations =>
@@ -366,6 +369,141 @@ class ChatRepository {
 
   bool isConversationBusy(String conversationId) =>
       _sendQueue.isBusy(conversationId);
+
+  Future<void> syncParticipantUsernames(
+    List<ConversationModel> conversations,
+  ) async {
+    final now = DateTime.now();
+    if (_lastUsernameSyncAt != null &&
+        now.difference(_lastUsernameSyncAt!) < _usernameSyncCooldown) {
+      return;
+    }
+    _lastUsernameSyncAt = now;
+
+    try {
+      final allIds = <String>{};
+      for (final conv in conversations) {
+        allIds.addAll(conv.participantIds);
+      }
+      if (allIds.isEmpty) return;
+
+      final idList = allIds.toList();
+      final liveUsernames = <String, String>{}; // userId -> username
+
+      Future<void> fetchChunk(List<String> chunk) async {
+        final snap = await _profiles
+            .where(FieldPath.documentId, whereIn: chunk)
+            .get();
+
+        final foundIds = <String>{};
+        for (final doc in snap.docs) {
+          final username = doc.data()['username'] as String? ?? '';
+          if (username.isNotEmpty) {
+            liveUsernames[doc.id] = username;
+            foundIds.add(doc.id);
+
+            final uid = doc.data()['user_id'] as String?;
+            if (uid != null && uid.isNotEmpty && uid != doc.id) {
+              liveUsernames[uid] = username;
+              foundIds.add(uid);
+            }
+          }
+        }
+
+        final missing = chunk.where((id) => !foundIds.contains(id)).toList();
+        if (missing.isEmpty) return;
+
+        final fallbackChunks = <List<String>>[];
+        for (var i = 0; i < missing.length; i += 10) {
+          fallbackChunks.add(
+            missing.sublist(i, (i + 10).clamp(0, missing.length)),
+          );
+        }
+        await Future.wait(
+          fallbackChunks.map((fc) async {
+            final fSnap = await _profiles.where('user_id', whereIn: fc).get();
+            for (final doc in fSnap.docs) {
+              final username = doc.data()['username'] as String? ?? '';
+              final uid = doc.data()['user_id'] as String? ?? doc.id;
+              if (username.isNotEmpty) {
+                liveUsernames[uid] = username;
+                liveUsernames[doc.id] = username;
+              }
+            }
+          }),
+        );
+      }
+
+      final chunks = <List<String>>[];
+      for (var i = 0; i < idList.length; i += 30) {
+        chunks.add(idList.sublist(i, (i + 30).clamp(0, idList.length)));
+      }
+      await Future.wait(chunks.map(fetchChunk));
+
+      if (liveUsernames.isEmpty) return;
+
+      for (final entry in liveUsernames.entries) {
+        final cached = _profileCache.get(entry.key);
+        if (cached != null) {
+          _profileCache.put(entry.key, {...cached, 'username': entry.value});
+        }
+      }
+
+      final writeBatch = _firestore.batch();
+      var dirtyCount = 0;
+
+      for (final conv in conversations) {
+        if (conv.id == null) continue;
+
+        final storedUsernames = Map<String, String>.from(
+          conv.participantUsernames,
+        );
+        final updatedUsernames = Map<String, String>.from(storedUsernames);
+        var changed = false;
+
+        for (final participantId in conv.participantIds) {
+          final liveUsername = liveUsernames[participantId];
+          if (liveUsername == null || liveUsername.isEmpty) continue;
+
+          final storedUsername = storedUsernames[participantId] ?? '';
+          if (storedUsername != liveUsername) {
+            updatedUsernames[participantId] = liveUsername;
+            changed = true;
+          }
+        }
+
+        if (!changed) continue;
+
+        writeBatch.update(_conversations.doc(conv.id), {
+          'participant_usernames': updatedUsernames,
+        });
+
+        final corrected = ConversationModel(
+          id: conv.id,
+          type: conv.type,
+          participantIds: conv.participantIds,
+          participantUsernames: updatedUsernames,
+          createdBy: conv.createdBy,
+          createdAt: conv.createdAt,
+          updatedAt: conv.updatedAt,
+          lastMessage: conv.lastMessage,
+          lastMessageAt: conv.lastMessageAt,
+          lastMessageSenderId: conv.lastMessageSenderId,
+          groupName: conv.groupName,
+          groupPhoto: conv.groupPhoto,
+          unreadCounts: conv.unreadCounts,
+          isActive: conv.isActive,
+        );
+        unawaited(_cache.upsertConversation(corrected));
+
+        dirtyCount++;
+      }
+
+      if (dirtyCount == 0) return;
+
+      await writeBatch.commit();
+    } catch (_) {}
+  }
 
   Future<bool> checkUserExists(String userId) async {
     if (userId.isEmpty) return false;
@@ -572,6 +710,8 @@ class ChatRepository {
                   });
 
                   _cache.upsertConversations(list);
+
+                  unawaited(syncParticipantUsernames(list));
 
                   final buffer = StringBuffer();
                   buffer.writeln('Conversations Update: ${DateTime.now()}');
@@ -1061,6 +1201,16 @@ class ChatRepository {
     }
 
     return null;
+  }
+
+  Future<bool> isBlockedBy(String blockerId, String currentUserId) async {
+    final snap = await _friendRequests
+        .where('from_user_id', isEqualTo: blockerId)
+        .where('to_user_id', isEqualTo: currentUserId)
+        .where('status', isEqualTo: FriendRequestStatus.blocked.name)
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
   }
 
   Future<FriendRequestModel> sendFriendRequest({
@@ -1612,4 +1762,10 @@ class BusyException implements Exception {
 
   @override
   String toString() => 'BusyException: $message';
+}
+
+void unawaited(Future<void> future) {
+  future.catchError((Object e, StackTrace st) {
+    debugPrint('[unawaited] $e\n$st');
+  });
 }
