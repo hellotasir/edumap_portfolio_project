@@ -13,7 +13,7 @@ class SocialRow extends StatelessWidget {
       spacing: 8,
       runSpacing: 6,
       children: [
-        if (info.socialLinks.linkedin.isNotEmpty)
+        if (info.socialLinks.linkedin != null)
           ActionChip(
             avatar: Icon(
               Icons.work_outline_rounded,
@@ -27,7 +27,7 @@ class SocialRow extends StatelessWidget {
             shape: const StadiumBorder(),
             visualDensity: VisualDensity.compact,
           ),
-        if (info.socialLinks.github.isNotEmpty)
+        if (info.socialLinks.github != null)
           ActionChip(
             avatar: Icon(Icons.code_rounded, size: 14, color: cs.primary),
             label: const Text('GitHub'),
@@ -37,7 +37,7 @@ class SocialRow extends StatelessWidget {
             shape: const StadiumBorder(),
             visualDensity: VisualDensity.compact,
           ),
-        if (info.socialLinks.website.isNotEmpty)
+        if (info.socialLinks.website != null)
           ActionChip(
             avatar: Icon(Icons.language_rounded, size: 14, color: cs.primary),
             label: const Text('Website'),

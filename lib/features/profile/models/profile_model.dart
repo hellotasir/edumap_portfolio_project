@@ -1,5 +1,68 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+enum ProfileMode {
+  student,
+  instructor;
+
+  String get label => '${name[0].toUpperCase()}${name.substring(1)}';
+
+  String toJson() => name;
+
+  static ProfileMode fromJson(String? value) => values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => ProfileMode.student,
+      );
+}
+
+enum ProfileStatus {
+  active,
+  inactive,
+  suspended;
+
+  String toJson() => name;
+
+  static ProfileStatus fromJson(String? value) => values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => ProfileStatus.active,
+      );
+}
+
+enum Gender {
+  male,
+  female,
+  preferNotToSay;
+
+  static const Map<Gender, String> _labels = {
+    Gender.male: 'Male',
+    Gender.female: 'Female',
+    Gender.preferNotToSay: 'Prefer not to say',
+  };
+
+  String get label => _labels[this]!;
+
+  String toJson() => label;
+
+  static Gender fromJson(String? value) => values.firstWhere(
+        (e) => e.label == value,
+        orElse: () => Gender.preferNotToSay,
+      );
+}
+
+enum StudentLevel {
+  beginner,
+  intermediate,
+  advanced;
+
+  String get label => '${name[0].toUpperCase()}${name.substring(1)}';
+
+  String toJson() => name;
+
+  static StudentLevel fromJson(String? value) => values.firstWhere(
+        (e) => e.name == value,
+        orElse: () => StudentLevel.beginner,
+      );
+}
+
 class ProfileModel {
   const ProfileModel({
     this.id,
@@ -27,10 +90,10 @@ class ProfileModel {
   final String email;
   final String phone;
   final String passwordHash;
-  final String currentMode;
-  final List<String> availableModes;
+  final ProfileMode currentMode;
+  final List<ProfileMode> availableModes;
   final bool isVerified;
-  final String status;
+  final ProfileStatus status;
   final DateTime createdAt;
   final DateTime updatedAt;
   final DateTime lastLogin;
@@ -46,10 +109,10 @@ class ProfileModel {
     String? email,
     String? phone,
     String? passwordHash,
-    String? currentMode,
-    List<String>? availableModes,
+    ProfileMode? currentMode,
+    List<ProfileMode>? availableModes,
     bool? isVerified,
-    String? status,
+    ProfileStatus? status,
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? lastLogin,
@@ -93,22 +156,22 @@ class ProfileInfo {
   });
 
   final String fullName;
-  final String profilePhoto;
-  final String coverPhoto;
+  final Uri? profilePhoto;
+  final Uri? coverPhoto;
   final String bio;
   final DateTime? dateOfBirth;
-  final String gender;
+  final Gender gender;
   final Location location;
   final List<String> languages;
   final SocialLinks socialLinks;
 
   ProfileInfo copyWith({
     String? fullName,
-    String? profilePhoto,
-    String? coverPhoto,
+    Uri? profilePhoto,
+    Uri? coverPhoto,
     String? bio,
     DateTime? dateOfBirth,
-    String? gender,
+    Gender? gender,
     Location? location,
     List<String>? languages,
     SocialLinks? socialLinks,
@@ -140,14 +203,14 @@ class Location {
 
 class SocialLinks {
   const SocialLinks({
-    required this.linkedin,
-    required this.github,
-    required this.website,
+    this.linkedin,
+    this.github,
+    this.website,
   });
 
-  final String linkedin;
-  final String github;
-  final String website;
+  final Uri? linkedin;
+  final Uri? github;
+  final Uri? website;
 }
 
 class StudentProfile {
@@ -159,7 +222,7 @@ class StudentProfile {
 
   final bool isActive;
   final List<String> interests;
-  final String currentLevel;
+  final StudentLevel currentLevel;
 }
 
 class InstructorProfile {
@@ -196,7 +259,7 @@ class MediaModel {
     required this.uploadedAt,
   });
 
-  final String url;
+  final Uri url;
   final String path;
   final String bucket;
   final String mimeType;
@@ -204,17 +267,17 @@ class MediaModel {
   final DateTime uploadedAt;
 
   factory MediaModel.fromMap(Map<String, dynamic> map) => MediaModel(
-        url: map['url'] ?? '',
-        path: map['path'] ?? '',
-        bucket: map['bucket'] ?? '',
-        mimeType: map['mime_type'] ?? '',
-        size: (map['size'] ?? 0) as int,
+        url: Uri.parse(map['url'] as String? ?? ''),
+        path: map['path'] as String? ?? '',
+        bucket: map['bucket'] as String? ?? '',
+        mimeType: map['mime_type'] as String? ?? '',
+        size: map['size'] as int? ?? 0,
         uploadedAt:
             (map['uploaded_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       );
 
   Map<String, dynamic> toMap() => {
-        'url': url,
+        'url': url.toString(),
         'path': path,
         'bucket': bucket,
         'mime_type': mimeType,

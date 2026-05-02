@@ -13,29 +13,30 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
     final data = snapshot.data()!;
     return ProfileModel(
       id: snapshot.id,
-      userId: data['user_id'] ?? '',
-      username: data['username'] ?? '',
-      email: data['email'] ?? '',
-      phone: data['phone'] ?? '',
-      passwordHash: data['password_hash'] ?? '',
-      currentMode: data['current_mode'] ?? 'student',
-      availableModes:
-          (data['available_modes'] as List<dynamic>?)
-              ?.map((e) => e.toString())
+      userId: data['user_id'] as String? ?? '',
+      username: data['username'] as String? ?? '',
+      email: data['email'] as String? ?? '',
+      phone: data['phone'] as String? ?? '',
+      passwordHash: data['password_hash'] as String? ?? '',
+      currentMode: ProfileMode.fromJson(data['current_mode'] as String?),
+      availableModes: (data['available_modes'] as List<dynamic>?)
+              ?.map((e) => ProfileMode.fromJson(e.toString()))
               .toList() ??
           [],
-      isVerified: data['is_verified'] ?? false,
-      status: data['status'] ?? 'active',
+      isVerified: data['is_verified'] as bool? ?? false,
+      status: ProfileStatus.fromJson(data['status'] as String?),
       createdAt:
           (data['created_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       updatedAt:
           (data['updated_at'] as Timestamp?)?.toDate() ?? DateTime.now(),
       lastLogin:
           (data['last_login'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      profile: _parseProfile(data['profile']),
-      studentProfile: _parseStudent(data['student_profile']),
-      instructorProfile: _parseInstructor(data['instructor_profile']),
-      system: _parseSystem(data['system']),
+      profile: _parseProfile(data['profile'] as Map<String, dynamic>?),
+      studentProfile:
+          _parseStudent(data['student_profile'] as Map<String, dynamic>?),
+      instructorProfile:
+          _parseInstructor(data['instructor_profile'] as Map<String, dynamic>?),
+      system: _parseSystem(data['system'] as Map<String, dynamic>?),
     );
   }
 
@@ -46,10 +47,11 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
         'email': model.email,
         'phone': model.phone,
         'password_hash': model.passwordHash,
-        'current_mode': model.currentMode,
-        'available_modes': model.availableModes,
+        'current_mode': model.currentMode.toJson(),
+        'available_modes':
+            model.availableModes.map((e) => e.toJson()).toList(),
         'is_verified': model.isVerified,
-        'status': model.status,
+        'status': model.status.toJson(),
         'created_at': Timestamp.fromDate(model.createdAt),
         'updated_at': Timestamp.fromDate(model.updatedAt),
         'last_login': Timestamp.fromDate(model.lastLogin),
@@ -84,10 +86,11 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
         'email': model.email,
         'phone': model.phone,
         'password_hash': model.passwordHash,
-        'current_mode': model.currentMode,
-        'available_modes': model.availableModes,
+        'current_mode': model.currentMode.toJson(),
+        'available_modes':
+            model.availableModes.map((e) => e.toJson()).toList(),
         'is_verified': model.isVerified,
-        'status': model.status,
+        'status': model.status.toJson(),
         'created_at': Timestamp.fromDate(model.createdAt),
         'updated_at': Timestamp.fromDate(model.updatedAt),
         'last_login': Timestamp.fromDate(model.lastLogin),
@@ -105,27 +108,36 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
 
   ProfileInfo _parseProfile(Map<String, dynamic>? data) {
     data ??= {};
+    final locationData = data['location'] as Map<String, dynamic>? ?? {};
+    final socialData = data['social_links'] as Map<String, dynamic>? ?? {};
+    final profilePhotoStr = data['profile_photo'] as String? ?? '';
+    final coverPhotoStr = data['cover_photo'] as String? ?? '';
+    final linkedinStr = socialData['linkedin'] as String? ?? '';
+    final githubStr = socialData['github'] as String? ?? '';
+    final websiteStr = socialData['website'] as String? ?? '';
+
     return ProfileInfo(
-      fullName: data['full_name'] ?? '',
-      profilePhoto: data['profile_photo'] ?? '',
-      coverPhoto: data['cover_photo'] ?? '',
-      bio: data['bio'] ?? '',
+      fullName: data['full_name'] as String? ?? '',
+      profilePhoto:
+          profilePhotoStr.isNotEmpty ? Uri.tryParse(profilePhotoStr) : null,
+      coverPhoto:
+          coverPhotoStr.isNotEmpty ? Uri.tryParse(coverPhotoStr) : null,
+      bio: data['bio'] as String? ?? '',
       dateOfBirth: null,
-      gender: data['gender'] ?? '',
+      gender: Gender.fromJson(data['gender'] as String?),
       location: Location(
-        country: data['location']?['country'] ?? '',
-        city: data['location']?['city'] ?? '',
-        timezone: data['location']?['timezone'] ?? '',
+        country: locationData['country'] as String? ?? '',
+        city: locationData['city'] as String? ?? '',
+        timezone: locationData['timezone'] as String? ?? '',
       ),
-      languages:
-          (data['languages'] as List<dynamic>?)
+      languages: (data['languages'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
       socialLinks: SocialLinks(
-        linkedin: data['social_links']?['linkedin'] ?? '',
-        github: data['social_links']?['github'] ?? '',
-        website: data['social_links']?['website'] ?? '',
+        linkedin: linkedinStr.isNotEmpty ? Uri.tryParse(linkedinStr) : null,
+        github: githubStr.isNotEmpty ? Uri.tryParse(githubStr) : null,
+        website: websiteStr.isNotEmpty ? Uri.tryParse(websiteStr) : null,
       ),
     );
   }
@@ -133,45 +145,43 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
   StudentProfile _parseStudent(Map<String, dynamic>? data) {
     data ??= {};
     return StudentProfile(
-      isActive: data['is_active'] ?? false,
-      interests:
-          (data['interests'] as List<dynamic>?)
+      isActive: data['is_active'] as bool? ?? false,
+      interests: (data['interests'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      currentLevel: data['current_level'] ?? 'beginner',
+      currentLevel: StudentLevel.fromJson(data['current_level'] as String?),
     );
   }
 
   InstructorProfile _parseInstructor(Map<String, dynamic>? data) {
     data ??= {};
     return InstructorProfile(
-      isActive: data['is_active'] ?? false,
-      headline: data['headline'] ?? '',
-      expertise:
-          (data['expertise'] as List<dynamic>?)
+      isActive: data['is_active'] as bool? ?? false,
+      headline: data['headline'] as String? ?? '',
+      expertise: (data['expertise'] as List<dynamic>?)
               ?.map((e) => e.toString())
               .toList() ??
           [],
-      yearsOfExperience: (data['years_of_experience'] ?? 0) as int,
+      yearsOfExperience: data['years_of_experience'] as int? ?? 0,
     );
   }
 
   SystemInfo _parseSystem(Map<String, dynamic>? data) {
     data ??= {};
+    final flags = data['flags'] as Map<String, dynamic>? ?? {};
     return SystemInfo(
-      isBanned: data['flags']?['is_banned'] ?? false,
-      isFeaturedInstructor:
-          data['flags']?['is_featured_instructor'] ?? false,
+      isBanned: flags['is_banned'] as bool? ?? false,
+      isFeaturedInstructor: flags['is_featured_instructor'] as bool? ?? false,
     );
   }
 
   Map<String, dynamic> _profileToMap(ProfileInfo p) => {
         'full_name': p.fullName,
-        'profile_photo': p.profilePhoto,
-        'cover_photo': p.coverPhoto,
+        'profile_photo': p.profilePhoto?.toString() ?? '',
+        'cover_photo': p.coverPhoto?.toString() ?? '',
         'bio': p.bio,
-        'gender': p.gender,
+        'gender': p.gender.toJson(),
         'location': {
           'country': p.location.country,
           'city': p.location.city,
@@ -179,16 +189,16 @@ class ProfileRepository implements DatabaseRepository<ProfileModel> {
         },
         'languages': p.languages,
         'social_links': {
-          'linkedin': p.socialLinks.linkedin,
-          'github': p.socialLinks.github,
-          'website': p.socialLinks.website,
+          'linkedin': p.socialLinks.linkedin?.toString() ?? '',
+          'github': p.socialLinks.github?.toString() ?? '',
+          'website': p.socialLinks.website?.toString() ?? '',
         },
       };
 
   Map<String, dynamic> _studentToMap(StudentProfile s) => {
         'is_active': s.isActive,
         'interests': s.interests,
-        'current_level': s.currentLevel,
+        'current_level': s.currentLevel.toJson(),
       };
 
   Map<String, dynamic> _instructorToMap(InstructorProfile i) => {

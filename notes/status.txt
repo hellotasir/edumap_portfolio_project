@@ -1,0 +1,14 @@
+User Flow
+
+1. Create account - ok
+2. Login account - ok
+3. Blank home (with no profile) - ok
+4. Profile create - ok
+5. Home (with profile) - ok
+6. Chat system (user search, requests, friends, chat, group, notification) - ok
+7. Subscription system (payment, history) - ok
+8. New home (with location and ai) - ok
+9. Location system (share/hide gps, add address gps, track distance) - ok
+10. Ai (search, start chat, check friends, send message) - ok
+11. Settings (about, feedback, notification, appearance, sign out) - ok
+12. Account (details, update email, 2fa, reset password, delete account) - ok 

@@ -39,7 +39,7 @@ class BioSection extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                capitalize(profile.currentMode),
+                capitalize(profile.currentMode.toString()),
                 style: tt.bodySmall?.copyWith(
                   color: cs.primary,
                   fontWeight: FontWeight.w600,
@@ -93,7 +93,7 @@ class BioSection extends StatelessWidget {
   }
 
   static bool _hasSocialLinks(ProfileInfo info) =>
-      info.socialLinks.linkedin.isNotEmpty ||
-      info.socialLinks.github.isNotEmpty ||
-      info.socialLinks.website.isNotEmpty;
+      info.socialLinks.linkedin != null ||
+      info.socialLinks.github != null ||
+      info.socialLinks.website != null;
 }

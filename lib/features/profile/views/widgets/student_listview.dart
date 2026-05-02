@@ -16,14 +16,14 @@ class StudentListView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final idx = _levels.indexOf(profile.currentLevel.toLowerCase());
+    final idx = _levels.indexOf(profile.currentLevel.toJson().toLowerCase());
     final progress = idx < 0 ? 0.25 : (idx + 1) / _levels.length;
 
     final items = <DetailItem>[
       DetailItem(
         icon: Icons.bar_chart_rounded,
         title: 'Current Level',
-        subtitle: capitalize(profile.currentLevel),
+        subtitle: capitalize(profile.currentLevel.toJson()),
         progress: progress,
       ),
       DetailItem(

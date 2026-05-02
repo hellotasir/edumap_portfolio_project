@@ -31,5 +31,5 @@ enum UploadTarget { avatar, cover }
 
 final profileProvider =
     StateNotifierProvider.family<ProfileNotifier, ProfileState, String?>(
-      (ref, viewUserId) => ProfileNotifier(ref: ref, viewUserId: viewUserId),
-    );
+  (ref, viewUserId) => ProfileNotifier(ref: ref, viewUserId: viewUserId),
+);

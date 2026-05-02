@@ -9,6 +9,7 @@ class DetailItem {
     this.isTags = false,
     this.tags = const [],
     this.isLink = false,
+    this.uri,
   });
   final IconData icon;
   final String title;
@@ -17,4 +18,5 @@ class DetailItem {
   final bool isTags;
   final List<String> tags;
   final bool isLink;
+  final Uri? uri;
 }

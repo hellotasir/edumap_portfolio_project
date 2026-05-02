@@ -23,9 +23,9 @@ class CoverPhoto extends StatelessWidget {
       fit: StackFit.expand,
       children: [
         RepaintBoundary(
-          child: info.coverPhoto.isNotEmpty
+          child: info.coverPhoto != null
               ? Image.network(
-                  info.coverPhoto,
+                  info.coverPhoto.toString(),
                   fit: BoxFit.cover,
                   key: ValueKey(info.coverPhoto),
                   errorBuilder: (_, _, _) =>

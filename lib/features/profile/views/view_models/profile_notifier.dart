@@ -13,7 +13,7 @@ import 'package:image_picker/image_picker.dart';
 
 class ProfileNotifier extends StateNotifier<ProfileState> {
   ProfileNotifier({required this.ref, required this.viewUserId})
-    : super(const ProfileState()) {
+      : super(const ProfileState()) {
     _init();
   }
 
@@ -32,7 +32,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
   void _init() => loadProfile();
 
-  /// Load profile WITHOUT auto-creating if missing
   Future<void> loadProfile() async {
     state = state.copyWith(loading: true, clearError: true);
 
@@ -48,7 +47,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       );
 
       if (results.isNotEmpty) {
-        // Clean up duplicates for own profile only
         if (isOwnProfile) {
           final currentEmail = _authRepo.currentUser?.email ?? '';
           if (currentEmail.isNotEmpty) {
@@ -57,7 +55,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         }
         state = state.copyWith(profile: results.first, loading: false);
       } else {
-        // FIXED: Do NOT auto-create here
         state = state.copyWith(
           loading: false,
           errorMessage: isOwnProfile
@@ -71,7 +68,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     }
   }
 
-  /// Explicit method to create profile - call this manually when needed
   Future<void> createProfile() async {
     if (!isOwnProfile) {
       throw Exception('Cannot create profile for other users');
@@ -85,7 +81,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     state = state.copyWith(loading: true, clearError: true);
 
     try {
-      // Check if profile already exists
       final existing = await _service.getAll(
         query: (col) => col.where('user_id', isEqualTo: uid).limit(1),
       );
@@ -95,7 +90,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         return;
       }
 
-      // Create new profile
       await _createDefaultProfile(uid);
     } catch (e, st) {
       debugPrint('[ProfileNotifier] create error: $e\n$st');
@@ -112,7 +106,6 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       if (allByEmail.length <= 1) return;
 
-      // Keep only the one matching current user_id
       final duplicates = allByEmail.where((p) => p.userId != uid).toList();
 
       for (final doc in duplicates) {
@@ -140,6 +133,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
         ? rawName.replaceAll(' ', '_').toLowerCase()
         : emailPrefix;
     final now = DateTime.now();
+    final avatarUrl = meta['avatar_url'] as String? ?? '';
 
     final defaultProfile = ProfileModel(
       userId: uid,
@@ -147,28 +141,29 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       email: user.email ?? '',
       phone: user.phone ?? '',
       passwordHash: '',
-      currentMode: 'student',
-      availableModes: const ['student'],
+      currentMode: ProfileMode.student,
+      availableModes: const [ProfileMode.student],
       isVerified: false,
-      status: 'active',
+      status: ProfileStatus.active,
       createdAt: now,
       updatedAt: now,
       lastLogin: now,
       profile: ProfileInfo(
         fullName: rawName,
-        profilePhoto: meta['avatar_url'] as String? ?? '',
-        coverPhoto: '',
+        profilePhoto:
+            avatarUrl.isNotEmpty ? Uri.tryParse(avatarUrl) : null,
+        coverPhoto: null,
         bio: '',
         dateOfBirth: null,
-        gender: '',
+        gender: Gender.preferNotToSay,
         location: const Location(country: '', city: '', timezone: ''),
         languages: const [],
-        socialLinks: const SocialLinks(linkedin: '', github: '', website: ''),
+        socialLinks: const SocialLinks(),
       ),
       studentProfile: const StudentProfile(
         isActive: true,
         interests: [],
-        currentLevel: 'beginner',
+        currentLevel: StudentLevel.beginner,
       ),
       instructorProfile: const InstructorProfile(
         isActive: false,
@@ -212,7 +207,7 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
       final profile = state.profile!;
       final result = await _storage.uploadAvatar(
         userId: profile.userId,
-        roleLabel: profile.currentMode,
+        roleLabel: profile.currentMode.name,
         file: file,
       );
 
@@ -220,11 +215,12 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       final rawUrl = result.data!;
       final oldUrl = profile.profile.profilePhoto;
-      if (oldUrl.isNotEmpty) await NetworkImage(oldUrl).evict();
-      final freshUrl = _cacheBust(rawUrl);
-      await _service.update(profile.id!, {'profile.profile_photo': freshUrl});
+      if (oldUrl != null) await NetworkImage(oldUrl.toString()).evict();
+      final freshUri = _cacheBust(rawUrl);
+      await _service.update(
+          profile.id!, {'profile.profile_photo': freshUri.toString()});
       state = state.copyWith(
-        profile: _rebuildProfileInfo(profile, profilePhoto: freshUrl),
+        profile: _rebuildProfileInfo(profile, profilePhoto: freshUri),
         uploadingAvatar: false,
       );
     } catch (e) {
@@ -250,11 +246,12 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
 
       final rawUrl = result.data!;
       final oldUrl = profile.profile.coverPhoto;
-      if (oldUrl.isNotEmpty) await NetworkImage(oldUrl).evict();
-      final freshUrl = _cacheBust(rawUrl);
-      await _service.update(profile.id!, {'profile.cover_photo': freshUrl});
+      if (oldUrl != null) await NetworkImage(oldUrl.toString()).evict();
+      final freshUri = _cacheBust(rawUrl);
+      await _service.update(
+          profile.id!, {'profile.cover_photo': freshUri.toString()});
       state = state.copyWith(
-        profile: _rebuildProfileInfo(profile, coverPhoto: freshUrl),
+        profile: _rebuildProfileInfo(profile, coverPhoto: freshUri),
         uploadingCover: false,
       );
     } catch (e) {
@@ -263,23 +260,21 @@ class ProfileNotifier extends StateNotifier<ProfileState> {
     }
   }
 
-  static String _cacheBust(String url) {
+  static Uri _cacheBust(String url) {
     final uri = Uri.tryParse(url);
-    if (uri == null) return url;
-    return uri
-        .replace(
-          queryParameters: {
-            ...uri.queryParameters,
-            '_cb': '${DateTime.now().millisecondsSinceEpoch}',
-          },
-        )
-        .toString();
+    if (uri == null) return Uri();
+    return uri.replace(
+      queryParameters: {
+        ...uri.queryParameters,
+        '_cb': '${DateTime.now().millisecondsSinceEpoch}',
+      },
+    );
   }
 
   static ProfileModel _rebuildProfileInfo(
     ProfileModel p, {
-    String? profilePhoto,
-    String? coverPhoto,
+    Uri? profilePhoto,
+    Uri? coverPhoto,
   }) {
     final o = p.profile;
     return ProfileModel(

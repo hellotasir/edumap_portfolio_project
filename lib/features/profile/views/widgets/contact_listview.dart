@@ -23,11 +23,11 @@ class ContactListView extends StatelessWidget {
           title: 'Phone',
           subtitle: profile.phone,
         ),
-      if (info.gender.isNotEmpty && info.gender != 'Prefer not to say')
+      if (info.gender != Gender.preferNotToSay)
         DetailItem(
           icon: Icons.person_outline_rounded,
           title: 'Gender',
-          subtitle: info.gender,
+          subtitle: info.gender.toJson(),
         ),
       if (info.dateOfBirth != null)
         DetailItem(
@@ -47,25 +47,25 @@ class ContactListView extends StatelessWidget {
           title: 'Languages',
           subtitle: info.languages.join(', '),
         ),
-      if (info.socialLinks.linkedin.isNotEmpty)
+      if (info.socialLinks.linkedin != null)
         DetailItem(
           icon: Icons.work_outline_rounded,
           title: 'LinkedIn',
-          subtitle: info.socialLinks.linkedin,
+          subtitle: info.socialLinks.linkedin.toString(),
           isLink: true,
         ),
-      if (info.socialLinks.github.isNotEmpty)
+      if (info.socialLinks.github != null)
         DetailItem(
           icon: Icons.code_rounded,
           title: 'GitHub',
-          subtitle: info.socialLinks.github,
+          subtitle: info.socialLinks.github.toString(),
           isLink: true,
         ),
-      if (info.socialLinks.website.isNotEmpty)
+      if (info.socialLinks.website != null)
         DetailItem(
           icon: Icons.language_rounded,
           title: 'Website',
-          subtitle: info.socialLinks.website,
+          subtitle: info.socialLinks.website.toString(),
           isLink: true,
         ),
     ];

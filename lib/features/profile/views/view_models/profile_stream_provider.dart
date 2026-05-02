@@ -22,7 +22,6 @@ final profileStreamProvider = StreamProvider.family<ProfileState, String?>((
   final repository = ProfileRepository();
 
   try {
-    
     final query = firestore
         .collection('profiles')
         .where('user_id', isEqualTo: targetUserId)

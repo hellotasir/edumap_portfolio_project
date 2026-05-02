@@ -1,4 +1,3 @@
-
 import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
 
 class ProfileState {
@@ -33,4 +32,3 @@ class ProfileState {
     );
   }
 }
-

@@ -22,13 +22,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _service = DatabaseService<ProfileModel>(ProfileRepository());
   final _formKey = GlobalKey<FormState>();
 
-  late String _selectedMode;
+  late ProfileMode _selectedMode;
+  late StudentLevel _selectedLevel;
   bool _saving = false;
   bool _dirty = false;
   bool _checkingUsername = false;
   bool _usernameAvailable = true;
   String? _usernameError;
-  String _gender = 'Prefer not to say';
+  Gender _gender = Gender.preferNotToSay;
   Timer? _debounceTimer;
 
   final _fullNameCtrl = TextEditingController();
@@ -46,36 +47,34 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   final _yearsCtrl = TextEditingController();
   final _expertiseCtrl = TextEditingController();
   final _interestsCtrl = TextEditingController();
-  final _levelCtrl = TextEditingController();
 
-  static const _genderOptions = ['Male', 'Female'];
-  static const _levelOptions = ['beginner', 'intermediate', 'advanced'];
-  static const _modeOptions = ['student', 'instructor'];
+  static const _genderOptions = [Gender.male, Gender.female];
 
   List<TextEditingController> get _controllers => [
-    _fullNameCtrl,
-    _usernameCtrl,
-    _bioCtrl,
-    _phoneCtrl,
-    _countryCtrl,
-    _cityCtrl,
-    _timezoneCtrl,
-    _languagesCtrl,
-    _linkedinCtrl,
-    _githubCtrl,
-    _websiteCtrl,
-    _headlineCtrl,
-    _yearsCtrl,
-    _expertiseCtrl,
-    _interestsCtrl,
-    _levelCtrl,
-  ];
+        _fullNameCtrl,
+        _usernameCtrl,
+        _bioCtrl,
+        _phoneCtrl,
+        _countryCtrl,
+        _cityCtrl,
+        _timezoneCtrl,
+        _languagesCtrl,
+        _linkedinCtrl,
+        _githubCtrl,
+        _websiteCtrl,
+        _headlineCtrl,
+        _yearsCtrl,
+        _expertiseCtrl,
+        _interestsCtrl,
+      ];
 
   @override
   void initState() {
     super.initState();
-    _selectedMode = widget.profile?.currentMode ?? 'student';
-    if (widget.profile != null) _populate(widget.profile!); 
+    _selectedMode = widget.profile?.currentMode ?? ProfileMode.student;
+    _selectedLevel = widget.profile?.studentProfile.currentLevel ??
+        StudentLevel.beginner;
+    if (widget.profile != null) _populate(widget.profile!);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       for (final c in _controllers) {
         if (c != _usernameCtrl) c.addListener(_onChanged);
@@ -102,19 +101,17 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _cityCtrl.text = p.profile.location.city;
     _timezoneCtrl.text = p.profile.location.timezone;
     _languagesCtrl.text = p.profile.languages.join(', ');
-    _linkedinCtrl.text = p.profile.socialLinks.linkedin;
-    _githubCtrl.text = p.profile.socialLinks.github;
-    _websiteCtrl.text = p.profile.socialLinks.website;
+    _linkedinCtrl.text = p.profile.socialLinks.linkedin?.toString() ?? '';
+    _githubCtrl.text = p.profile.socialLinks.github?.toString() ?? '';
+    _websiteCtrl.text = p.profile.socialLinks.website?.toString() ?? '';
     _headlineCtrl.text = p.instructorProfile.headline;
     _yearsCtrl.text = p.instructorProfile.yearsOfExperience == 0
         ? ''
         : p.instructorProfile.yearsOfExperience.toString();
     _expertiseCtrl.text = p.instructorProfile.expertise.join(', ');
     _interestsCtrl.text = p.studentProfile.interests.join(', ');
-    _levelCtrl.text = p.studentProfile.currentLevel;
-    _gender = _genderOptions.contains(p.profile.gender)
-        ? p.profile.gender
-        : 'Prefer not to say';
+    _selectedLevel = p.studentProfile.currentLevel;
+    _gender = p.profile.gender;
   }
 
   void _onChanged() {
@@ -181,7 +178,13 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   List<String> _splitComma(String s) =>
       s.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
 
+  Uri? _parseUri(String raw) {
+    final trimmed = raw.trim();
+    return trimmed.isNotEmpty ? Uri.tryParse(trimmed) : null;
+  }
+
   final _repo = ProfileRepository();
+
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
@@ -232,20 +235,18 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               timezone: _timezoneCtrl.text.trim(),
             ),
             socialLinks: SocialLinks(
-              linkedin: _linkedinCtrl.text.trim(),
-              github: _githubCtrl.text.trim(),
-              website: _websiteCtrl.text.trim(),
+              linkedin: _parseUri(_linkedinCtrl.text),
+              github: _parseUri(_githubCtrl.text),
+              website: _parseUri(_websiteCtrl.text),
             ),
           ),
           studentProfile: StudentProfile(
-            isActive: newMode == 'student',
+            isActive: newMode == ProfileMode.student,
             interests: _splitComma(_interestsCtrl.text),
-            currentLevel: _levelCtrl.text.trim().isNotEmpty
-                ? _levelCtrl.text.trim()
-                : 'beginner',
+            currentLevel: _selectedLevel,
           ),
           instructorProfile: InstructorProfile(
-            isActive: newMode == 'instructor',
+            isActive: newMode == ProfileMode.instructor,
             headline: _headlineCtrl.text.trim(),
             expertise: _splitComma(_expertiseCtrl.text),
             yearsOfExperience: int.tryParse(_yearsCtrl.text.trim()) ?? 0,
@@ -268,14 +269,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           currentMode: newMode,
           availableModes: updatedModes,
           isVerified: false,
-          status: 'active',
+          status: ProfileStatus.active,
           createdAt: now,
           updatedAt: now,
           lastLogin: now,
           profile: ProfileInfo(
             fullName: _fullNameCtrl.text.trim(),
-            profilePhoto: '',
-            coverPhoto: '',
+            profilePhoto: null,
+            coverPhoto: null,
             bio: _bioCtrl.text.trim(),
             dateOfBirth: null,
             gender: _gender,
@@ -286,25 +287,23 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
               timezone: _timezoneCtrl.text.trim(),
             ),
             socialLinks: SocialLinks(
-              linkedin: _linkedinCtrl.text.trim(),
-              github: _githubCtrl.text.trim(),
-              website: _websiteCtrl.text.trim(),
+              linkedin: _parseUri(_linkedinCtrl.text),
+              github: _parseUri(_githubCtrl.text),
+              website: _parseUri(_websiteCtrl.text),
             ),
           ),
           studentProfile: StudentProfile(
-            isActive: newMode == 'student',
+            isActive: newMode == ProfileMode.student,
             interests: _splitComma(_interestsCtrl.text),
-            currentLevel: _levelCtrl.text.trim().isNotEmpty
-                ? _levelCtrl.text.trim()
-                : 'beginner',
+            currentLevel: _selectedLevel,
           ),
           instructorProfile: InstructorProfile(
-            isActive: newMode == 'instructor',
+            isActive: newMode == ProfileMode.instructor,
             headline: _headlineCtrl.text.trim(),
             expertise: _splitComma(_expertiseCtrl.text),
             yearsOfExperience: int.tryParse(_yearsCtrl.text.trim()) ?? 0,
           ),
-          system: SystemInfo(isBanned: false, isFeaturedInstructor: false),
+          system: const SystemInfo(isBanned: false, isFeaturedInstructor: false),
         );
 
         await _service.add(newProfile);
@@ -471,15 +470,15 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
                         : (_usernameCtrl.text.trim().isNotEmpty &&
-                              _usernameAvailable &&
-                              _usernameCtrl.text.trim() !=
-                                  widget.profile?.username)
-                        ? const Icon(
-                            Icons.check_circle,
-                            color: Colors.green,
-                            size: 18,
-                          )
-                        : null,
+                                  _usernameAvailable &&
+                                  _usernameCtrl.text.trim() !=
+                                      widget.profile?.username)
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                  size: 18,
+                                )
+                              : null,
                     errorText: _usernameError,
                   ),
                   _Field(
@@ -546,7 +545,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                     keyboard: TextInputType.url,
                     prefixIcon: Icons.language_rounded,
                   ),
-                  if (_selectedMode == 'instructor') ...[
+                  if (_selectedMode == ProfileMode.instructor) ...[
                     _SectionHeader(label: 'Instructor Details'),
                     _Field(
                       label: 'Headline',
@@ -559,7 +558,9 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                       controller: _yearsCtrl,
                       hint: '5',
                       keyboard: TextInputType.number,
-                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly
+                      ],
                     ),
                     _Field(
                       label: 'Expertise',
@@ -571,12 +572,10 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
                   ] else ...[
                     _SectionHeader(label: 'Student Details'),
                     _LevelSelector(
-                      value: _levelOptions.contains(_levelCtrl.text)
-                          ? _levelCtrl.text
-                          : 'beginner',
-                      options: _levelOptions,
+                      value: _selectedLevel,
+                      options: StudentLevel.values,
                       onChanged: (v) => setState(() {
-                        _levelCtrl.text = v;
+                        _selectedLevel = v;
                         _dirty = true;
                       }),
                     ),
@@ -612,14 +611,14 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          SegmentedButton<String>(
-            segments: _modeOptions.map((mode) {
-              final icon = mode == 'instructor'
+          SegmentedButton<ProfileMode>(
+            segments: ProfileMode.values.map((mode) {
+              final icon = mode == ProfileMode.instructor
                   ? Icons.school_outlined
                   : Icons.person_outline_rounded;
-              return ButtonSegment<String>(
+              return ButtonSegment<ProfileMode>(
                 value: mode,
-                label: Text('${mode[0].toUpperCase()}${mode.substring(1)}'),
+                label: Text(mode.label),
                 icon: Icon(icon, size: 16),
               );
             }).toList(),
@@ -634,41 +633,44 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
             },
             style: ButtonStyle(
               shape: WidgetStatePropertyAll(
-                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
             ),
           ),
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
-            child: _selectedMode != (widget.profile?.currentMode ?? 'student')
-                ? Padding(
-                    padding: const EdgeInsets.only(top: 10),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.info_outline_rounded,
-                          size: 13,
-                          color: cs.primary,
-                        ),
-                        const SizedBox(width: 6),
-                        Expanded(
-                          child: Text(
-                            'Switching to ${_selectedMode} mode will update your active role on save.',
-                            style: tt.labelSmall?.copyWith(
-                              color: cs.onSurfaceVariant,
+            child:
+                _selectedMode != (widget.profile?.currentMode ?? ProfileMode.student)
+                    ? Padding(
+                        padding: const EdgeInsets.only(top: 10),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline_rounded,
+                              size: 13,
+                              color: cs.primary,
                             ),
-                          ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Switching to ${_selectedMode.name} mode will update your active role on save.',
+                                style: tt.labelSmall?.copyWith(
+                                  color: cs.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  )
-                : const SizedBox.shrink(),
+                      )
+                    : const SizedBox.shrink(),
           ),
           const SizedBox(height: 20),
           Divider(
-            color: Theme.of(
-              context,
-            ).colorScheme.outlineVariant.withOpacity(0.5),
+            color: Theme.of(context)
+                .colorScheme
+                .outlineVariant
+                .withOpacity(0.5),
             height: 1,
           ),
         ],
@@ -791,7 +793,7 @@ class _Field extends StatelessWidget {
         ),
         validator: required
             ? (v) =>
-                  (v == null || v.trim().isEmpty) ? '$label is required' : null
+                (v == null || v.trim().isEmpty) ? '$label is required' : null
             : null,
       ),
     );
@@ -805,9 +807,9 @@ class _GenderSelector extends StatelessWidget {
     required this.onChanged,
   });
 
-  final String value;
-  final List<String> options;
-  final ValueChanged<String> onChanged;
+  final Gender value;
+  final List<Gender> options;
+  final ValueChanged<Gender> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -830,7 +832,7 @@ class _GenderSelector extends StatelessWidget {
             children: options.map((option) {
               final selected = value == option;
               return ChoiceChip(
-                label: Text(option),
+                label: Text(option.label),
                 selected: selected,
                 onSelected: (_) => onChanged(option),
                 visualDensity: VisualDensity.compact,
@@ -856,9 +858,9 @@ class _LevelSelector extends StatelessWidget {
     required this.onChanged,
   });
 
-  final String value;
-  final List<String> options;
-  final ValueChanged<String> onChanged;
+  final StudentLevel value;
+  final List<StudentLevel> options;
+  final ValueChanged<StudentLevel> onChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -866,9 +868,9 @@ class _LevelSelector extends StatelessWidget {
     final tt = Theme.of(context).textTheme;
 
     const icons = {
-      'beginner': Icons.star_outline_rounded,
-      'intermediate': Icons.star_half_rounded,
-      'advanced': Icons.star_rounded,
+      StudentLevel.beginner: Icons.star_outline_rounded,
+      StudentLevel.intermediate: Icons.star_half_rounded,
+      StudentLevel.advanced: Icons.star_rounded,
     };
 
     return Padding(
@@ -894,7 +896,7 @@ class _LevelSelector extends StatelessWidget {
                       ? cs.onSecondaryContainer
                       : cs.onSurfaceVariant,
                 ),
-                label: Text('${option[0].toUpperCase()}${option.substring(1)}'),
+                label: Text(option.label),
                 selected: selected,
                 onSelected: (_) => onChanged(option),
                 visualDensity: VisualDensity.compact,

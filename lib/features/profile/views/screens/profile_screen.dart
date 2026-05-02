@@ -1,4 +1,3 @@
-// lib/features/profile/views/screens/profile_screen.dart
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:edumap_portfolio_project/features/profile/views/view_models/profile_notifier.dart';

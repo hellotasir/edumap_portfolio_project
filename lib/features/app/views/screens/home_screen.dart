@@ -152,7 +152,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _HomeTab.inbox => InboxWidget(
         currentUserId: profile.userId,
         currentUsername: profile.username,
-        currentProfilePhoto: profile.profile.profilePhoto,
+        currentProfilePhoto: profile.profile.profilePhoto.toString(),
         chatRepository: _chatRepository,
       ),
       _HomeTab.location => MyLocationScreen(
@@ -162,9 +162,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       _HomeTab.ai => AiAssistantScreen(
         userId: profile.userId,
         username: profile.username,
-        profilePhoto: profile.profile.profilePhoto.isNotEmpty
-            ? profile.profile.profilePhoto
-            : null,
+        profilePhoto: profile.profile.profilePhoto?.toString(),
       ),
     };
   }

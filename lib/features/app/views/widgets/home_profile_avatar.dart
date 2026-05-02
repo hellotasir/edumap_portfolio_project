@@ -41,8 +41,9 @@ class HomeProfileAvatar extends StatelessWidget {
   }
 
   String? _safePhotoUrl(ProfileModel? profile) {
-    final url = profile?.profile.profilePhoto.trim();
-    if (url == null || url.isEmpty) return null;
+    final uri = profile?.profile.profilePhoto;
+    if (uri == null) return null;
+    final url = uri.toString();
     return (url.startsWith('https://') || url.startsWith('http://'))
         ? url
         : null;

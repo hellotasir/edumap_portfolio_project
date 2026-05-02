@@ -45,15 +45,15 @@ class AvatarRow extends StatelessWidget {
                     radius: 44,
                     backgroundColor: cs.primaryContainer,
                     key: ValueKey(info.profilePhoto),
-                    backgroundImage: info.profilePhoto.isNotEmpty
-                        ? NetworkImage(info.profilePhoto)
+                    backgroundImage: info.profilePhoto != null
+                        ? NetworkImage(info.profilePhoto.toString())
                         : null,
                     child: uploadingAvatar
                         ? CircularProgressIndicator(
                             strokeWidth: 2,
                             color: cs.onPrimaryContainer,
                           )
-                        : info.profilePhoto.isEmpty
+                        : info.profilePhoto == null
                         ? Text(
                             initials(name),
                             style: tt.titleLarge?.copyWith(
@@ -94,6 +94,7 @@ class AvatarRow extends StatelessWidget {
                   value: isInstructor
                       ? '${profile.instructorProfile.yearsOfExperience}yr'
                       : profile.studentProfile.currentLevel
+                            .toJson()
                             .substring(0, 3)
                             .toUpperCase(),
                   label: isInstructor ? 'Experience' : 'Level',
