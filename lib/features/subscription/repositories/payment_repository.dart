@@ -82,6 +82,38 @@ class PaymentRepository {
     }
   }
 
+  Future<Map<String, String>> getSSLCommerzCredentials() async {
+    try {
+      final anonKey = supabaseAnonKey;
+      final accessToken = _supabase.auth.currentSession?.accessToken;
+
+      final response = await http.post(
+        Uri.parse('$supabaseUrl/functions/v1/get-sslcommerz-credentials'),
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': anonKey,
+          'Authorization': 'Bearer ${accessToken ?? anonKey}',
+        },
+      );
+
+      if (response.statusCode != 200) {
+        final data = jsonDecode(response.body);
+        throw Exception(
+          'Failed to get credentials: ${data['error'] ?? response.body}',
+        );
+      }
+
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
+      return {
+        'store_id': data['store_id'] as String,
+        'store_passwd': data['store_passwd'] as String,
+      };
+    } catch (e) {
+      debugPrint('[SSLCommerz] Error: $e');
+      rethrow;
+    }
+  }
+
   Future<TransactionHistory> verifyAndActivateSSLCommerzSubscription({
     required SubscriptionPlan plan,
     required String transactionId,

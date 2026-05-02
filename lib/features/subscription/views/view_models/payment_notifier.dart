@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
 import 'package:edumap_portfolio_project/features/subscription/models/subscription_plan.dart';
 import 'package:edumap_portfolio_project/features/subscription/repositories/payment_repository.dart';
 import 'package:edumap_portfolio_project/features/profile/models/profile_model.dart';
@@ -129,9 +128,7 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
     required SubscriptionPlan plan,
     required ProfileModel profile,
   }) async {
-    
-    final storeID = sslCommerzStoreID;
-    final storePassword = sslCommerzStorePassword;
+    final credentials = await _paymentRepo.getSSLCommerzCredentials();
     final tranId = 'TXN${DateTime.now().millisecondsSinceEpoch}';
 
     final sslcommerz = Sslcommerz(
@@ -141,8 +138,8 @@ class PaymentNotifier extends StateNotifier<PaymentState> {
         language: 'en',
         product_category: 'Education',
         sdkType: SSLCSdkType.TESTBOX,
-        store_id: storeID,
-        store_passwd: storePassword,
+        store_id: credentials['store_id']!,
+        store_passwd: credentials['store_passwd']!,
         total_amount: plan.price.toDouble(),
         tran_id: tranId,
       ),

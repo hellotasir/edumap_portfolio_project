@@ -1,7 +1,12 @@
 // ignore_for_file: avoid_print
 
+import 'dart:math';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:edumap_portfolio_project/core/services/cloud/delete_service.dart';
+
+const int _kMaxRetries = 3;
+const Duration _kRetryBase = Duration(milliseconds: 400);
 
 class DeleteRepository {
   DeleteRepository({
@@ -55,9 +60,13 @@ class DeleteRepository {
         ) +
         await _safeCount(_col('friends').where('user_id_2', isEqualTo: userId));
 
-    counts['conversations'] = await _safeCount(
-      _col('conversations').where('created_by', isEqualTo: userId),
-    );
+    counts['conversations'] =
+        await _safeCount(
+          _col('conversations').where('created_by', isEqualTo: userId),
+        ) +
+        await _safeCount(
+          _col('conversations').where('participant_ids', arrayContains: userId),
+        );
 
     counts['conversations/messages'] = await _countAllMessagesForUser(userId);
 
@@ -80,118 +89,172 @@ class DeleteRepository {
       if (showLogs) print(msg);
     }
 
-    log('── Step 1: deleting messages…');
-    try {
-      final msgCount = await _deleteAllMessagesForUser(
-        userId,
+    log('── Step 1: deleting messages (all conversations)…');
+    combined = combined.merge(
+      await _retried(
+        label: 'conversations/messages',
+        action: () async {
+          final count = await _deleteAllMessagesForUser(
+            userId,
+            showLogs: showLogs,
+          );
+          return DeleteResult(
+            totalDeleted: count,
+            results: {'conversations/messages': count},
+            errors: {},
+          );
+        },
         showLogs: showLogs,
-      );
-      combined = combined.merge(
-        DeleteResult(
-          totalDeleted: msgCount,
-          results: {'conversations/messages': msgCount},
-          errors: {},
-        ),
-      );
-    } catch (e) {
-      log('❌ Step 1 (messages): $e');
-      combined = combined.merge(
-        DeleteResult(
-          totalDeleted: 0,
-          results: {},
-          errors: {'conversations/messages': e.toString()},
-        ),
-      );
-    }
+      ),
+    );
 
     log('── Step 2: deleting conversations…');
     combined = combined.merge(
-      await _firebaseService.deleteByField(
-        collection: 'conversations',
-        field: 'created_by',
-        userId: userId,
+      await _retried(
+        label: 'conversations',
+        action: () => _firebaseService.deleteByField(
+          collection: 'conversations',
+          field: 'created_by',
+          userId: userId,
+          showLogs: showLogs,
+        ),
         showLogs: showLogs,
       ),
     );
 
     log('── Step 3: deleting friend_requests…');
-    combined = combined
-        .merge(
-          await _firebaseService.deleteByField(
+    for (final field in ['from_user_id', 'to_user_id']) {
+      combined = combined.merge(
+        await _retried(
+          label: 'friend_requests[$field]',
+          action: () => _firebaseService.deleteByField(
             collection: 'friend_requests',
-            field: 'from_user_id',
+            field: field,
             userId: userId,
             showLogs: showLogs,
           ),
-        )
-        .merge(
-          await _firebaseService.deleteByField(
-            collection: 'friend_requests',
-            field: 'to_user_id',
-            userId: userId,
-            showLogs: showLogs,
-          ),
-        );
+          showLogs: showLogs,
+        ),
+      );
+    }
 
     log('── Step 4: deleting friends…');
-    combined = combined
-        .merge(
-          await _firebaseService.deleteByField(
+    for (final field in ['user_id_1', 'user_id_2']) {
+      combined = combined.merge(
+        await _retried(
+          label: 'friends[$field]',
+          action: () => _firebaseService.deleteByField(
             collection: 'friends',
-            field: 'user_id_1',
+            field: field,
             userId: userId,
             showLogs: showLogs,
           ),
-        )
-        .merge(
-          await _firebaseService.deleteByField(
-            collection: 'friends',
-            field: 'user_id_2',
-            userId: userId,
-            showLogs: showLogs,
-          ),
-        );
+          showLogs: showLogs,
+        ),
+      );
+    }
 
     log('── Step 5: deleting presence…');
     combined = combined.merge(
-      await _firebaseService.deleteDocById(
-        collection: 'presence',
-        docId: userId,
+      await _retried(
+        label: 'presence',
+        action: () => _firebaseService.deleteDocById(
+          collection: 'presence',
+          docId: userId,
+          showLogs: showLogs,
+        ),
         showLogs: showLogs,
       ),
     );
 
     log('── Step 6: deleting standard Firebase collections…');
     combined = combined.merge(
-      await _firebaseService.deleteByUserId(
-        collections: AppConfig.firebaseUserIdCollections,
-        userId: userId,
+      await _retried(
+        label: 'firebase_collections',
+        action: () => _firebaseService.deleteByUserId(
+          collections: AppConfig.firebaseUserIdCollections,
+          userId: userId,
+          showLogs: showLogs,
+        ),
         showLogs: showLogs,
       ),
     );
 
-    log('── Step 7: deleting profile by user_id and email…');
+    log('── Step 7: deleting profile…');
     combined = combined.merge(
-      await _firebaseService.deleteProfileByUserIdAndEmail(
-        userId: userId,
-        email: email,
+      await _retried(
+        label: 'profiles',
+        action: () => _deleteProfileWithFallback(
+          userId: userId,
+          email: email,
+          showLogs: showLogs,
+        ),
         showLogs: showLogs,
       ),
     );
 
     log('── Step 8: deleting Supabase DB rows…');
     combined = combined.merge(
-      await _supabaseService.deleteByUserId(
-        collections: AppConfig.supabaseUserIdCollections,
-        userId: userId,
+      await _retried(
+        label: 'supabase_db',
+        action: () => _supabaseService.deleteByUserId(
+          collections: AppConfig.supabaseUserIdCollections,
+          userId: userId,
+          showLogs: showLogs,
+        ),
         showLogs: showLogs,
       ),
     );
 
     log('── Step 9: deleting Supabase Storage files…');
     combined = combined.merge(
-      await _supabaseService.deleteStorageForUser(userId, showLogs: showLogs),
+      await _retried(
+        label: 'supabase_storage',
+        action: () =>
+            _supabaseService.deleteStorageForUser(userId, showLogs: showLogs),
+        showLogs: showLogs,
+      ),
     );
+
+    log('── Step 10: verifying — re-counting remaining data…');
+    final remaining = await previewUserDataCounts(userId);
+    final leaked = remaining.entries.where((e) => e.value > 0).toList();
+
+    if (leaked.isNotEmpty) {
+      log('⚠️  Data still found after initial sweep. Running cleanup pass…');
+      final cleanupResult = await _cleanupLeaked(
+        leaked,
+        userId,
+        email,
+        showLogs: showLogs,
+      );
+      combined = combined.merge(cleanupResult);
+
+      final afterCleanup = await previewUserDataCounts(userId);
+      final stillLeaked = afterCleanup.entries
+          .where((e) => e.value > 0)
+          .toList();
+
+      if (stillLeaked.isNotEmpty) {
+        final leakSummary = stillLeaked
+            .map((e) => '${e.key}=${e.value}')
+            .join(', ');
+        log('❌ Still remaining after cleanup: $leakSummary');
+        combined = combined.merge(
+          DeleteResult(
+            totalDeleted: 0,
+            results: {},
+            errors: {
+              'verification': 'Undeleted data after cleanup: $leakSummary',
+            },
+          ),
+        );
+      } else {
+        log('✅ Verification cleanup successful — no data remains.');
+      }
+    } else {
+      log('✅ Verification passed — no data remains.');
+    }
 
     if (strict && combined.hasErrors) {
       throw DeleteRepositoryException(
@@ -204,6 +267,150 @@ class DeleteRepository {
       '✅ deleteAllUserData complete — total deleted: ${combined.totalDeleted}',
     );
     return combined;
+  }
+
+  Future<DeleteResult> _cleanupLeaked(
+    List<MapEntry<String, int>> leaked,
+    String userId,
+    String email, {
+    required bool showLogs,
+  }) async {
+    DeleteResult result = const DeleteResult(
+      totalDeleted: 0,
+      results: {},
+      errors: {},
+    );
+
+    void log(String msg) {
+      if (showLogs) print(msg);
+    }
+
+    for (final entry in leaked) {
+      final key = entry.key;
+      log('  ↩️  Cleanup: $key (${entry.value} remaining)');
+
+      switch (key) {
+        case 'conversations/messages':
+          result = result.merge(
+            await _retried(
+              label: 'cleanup:conversations/messages',
+              action: () async {
+                final count = await _deleteAllMessagesForUser(
+                  userId,
+                  showLogs: showLogs,
+                );
+                return DeleteResult(
+                  totalDeleted: count,
+                  results: {'cleanup:conversations/messages': count},
+                  errors: {},
+                );
+              },
+              showLogs: showLogs,
+            ),
+          );
+
+        case 'conversations':
+          result = result.merge(
+            await _retried(
+              label: 'cleanup:conversations',
+              action: () => _firebaseService.deleteByField(
+                collection: 'conversations',
+                field: 'created_by',
+                userId: userId,
+                showLogs: showLogs,
+              ),
+              showLogs: showLogs,
+            ),
+          );
+
+        case 'friend_requests':
+          for (final field in ['from_user_id', 'to_user_id']) {
+            result = result.merge(
+              await _retried(
+                label: 'cleanup:friend_requests[$field]',
+                action: () => _firebaseService.deleteByField(
+                  collection: 'friend_requests',
+                  field: field,
+                  userId: userId,
+                  showLogs: showLogs,
+                ),
+                showLogs: showLogs,
+              ),
+            );
+          }
+
+        case 'friends':
+          for (final field in ['user_id_1', 'user_id_2']) {
+            result = result.merge(
+              await _retried(
+                label: 'cleanup:friends[$field]',
+                action: () => _firebaseService.deleteByField(
+                  collection: 'friends',
+                  field: field,
+                  userId: userId,
+                  showLogs: showLogs,
+                ),
+                showLogs: showLogs,
+              ),
+            );
+          }
+
+        case 'presence':
+          result = result.merge(
+            await _retried(
+              label: 'cleanup:presence',
+              action: () => _firebaseService.deleteDocById(
+                collection: 'presence',
+                docId: userId,
+                showLogs: showLogs,
+              ),
+              showLogs: showLogs,
+            ),
+          );
+
+        case 'profiles':
+          result = result.merge(
+            await _retried(
+              label: 'cleanup:profiles',
+              action: () => _deleteProfileWithFallback(
+                userId: userId,
+                email: email,
+                showLogs: showLogs,
+              ),
+              showLogs: showLogs,
+            ),
+          );
+
+        default:
+          if (AppConfig.firebaseUserIdCollections.contains(key)) {
+            result = result.merge(
+              await _retried(
+                label: 'cleanup:$key',
+                action: () => _firebaseService.deleteByUserId(
+                  collections: [key],
+                  userId: userId,
+                  showLogs: showLogs,
+                ),
+                showLogs: showLogs,
+              ),
+            );
+          } else if (AppConfig.supabaseUserIdCollections.contains(key)) {
+            result = result.merge(
+              await _retried(
+                label: 'cleanup:$key',
+                action: () => _supabaseService.deleteByUserId(
+                  collections: [key],
+                  userId: userId,
+                  showLogs: showLogs,
+                ),
+                showLogs: showLogs,
+              ),
+            );
+          }
+      }
+    }
+
+    return result;
   }
 
   Future<DeleteResult?> deleteWithConfirmation({
@@ -238,6 +445,84 @@ class DeleteRepository {
     userId: userId,
     showLogs: showLogs,
   );
+
+  Future<DeleteResult> _deleteProfileWithFallback({
+    required String userId,
+    required String email,
+    bool showLogs = true,
+  }) async {
+    void log(String msg) {
+      if (showLogs) print(msg);
+    }
+
+    final primaryResult = await _firebaseService.deleteProfileByUserIdAndEmail(
+      userId: userId,
+      email: email,
+      showLogs: showLogs,
+    );
+
+    if (primaryResult.totalDeleted > 0) return primaryResult;
+
+    log(
+      '⚠️  profiles: email lookup found nothing — falling back to user_id only',
+    );
+
+    final snap = await _col(
+      'profiles',
+    ).where('user_id', isEqualTo: userId).get();
+
+    if (snap.docs.isEmpty) {
+      log('✅ profiles: 0 found by user_id either — nothing to delete');
+      return const DeleteResult(totalDeleted: 0, results: {}, errors: {});
+    }
+
+    final batch = _db.batch();
+    for (final doc in snap.docs) {
+      batch.delete(doc.reference);
+    }
+    await batch.commit();
+
+    log('✅ profiles: ${snap.docs.length} deleted by user_id fallback');
+    return DeleteResult(
+      totalDeleted: snap.docs.length,
+      results: {'profiles': snap.docs.length},
+      errors: {},
+    );
+  }
+
+  Future<DeleteResult> _retried({
+    required String label,
+    required Future<DeleteResult> Function() action,
+    bool showLogs = true,
+  }) async {
+    for (int attempt = 1; attempt <= _kMaxRetries; attempt++) {
+      try {
+        return await action();
+      } catch (e) {
+        final isLast = attempt == _kMaxRetries;
+        if (showLogs) {
+          print(
+            isLast
+                ? '❌ $label failed after $attempt attempt(s): $e'
+                : '⚠️  $label attempt $attempt failed, retrying in ${_kRetryBase.inMilliseconds * pow(2, attempt - 1).toInt()}ms… ($e)',
+          );
+        }
+        if (isLast) {
+          return DeleteResult(
+            totalDeleted: 0,
+            results: {},
+            errors: {label: e.toString()},
+          );
+        }
+        await Future<void>.delayed(_kRetryBase * pow(2, attempt - 1).toInt());
+      }
+    }
+    return DeleteResult(
+      totalDeleted: 0,
+      results: {},
+      errors: {label: 'Unknown error after $_kMaxRetries retries'},
+    );
+  }
 
   Future<int> _safeCount(Query query) async {
     try {
@@ -282,11 +567,21 @@ class DeleteRepository {
     String userId, {
     bool showLogs = true,
   }) async {
-    final convSnap = await _col(
+    final participantSnap = await _col(
       'conversations',
     ).where('participant_ids', arrayContains: userId).get();
 
-    if (convSnap.docs.isEmpty) {
+    final createdSnap = await _col(
+      'conversations',
+    ).where('created_by', isEqualTo: userId).get();
+
+    final seen = <String>{};
+    final allDocs = [
+      ...participantSnap.docs,
+      ...createdSnap.docs,
+    ].where((d) => seen.add(d.id)).toList();
+
+    if (allDocs.isEmpty) {
       if (showLogs) {
         print('✅ conversations/messages: 0 (no conversations found)');
       }
@@ -295,7 +590,7 @@ class DeleteRepository {
 
     int totalMessages = 0;
 
-    for (final convDoc in convSnap.docs) {
+    for (final convDoc in allDocs) {
       final convId = convDoc.id;
       int convMessages = 0;
 
@@ -303,14 +598,22 @@ class DeleteRepository {
         final msgSnap = await _messages(convId).limit(_batchSize).get();
         if (msgSnap.docs.isEmpty) break;
 
-        final batch = _db.batch();
-        for (final msg in msgSnap.docs) {
-          batch.delete(msg.reference);
+        try {
+          final batch = _db.batch();
+          for (final msg in msgSnap.docs) {
+            batch.delete(msg.reference);
+          }
+          await batch.commit();
+          convMessages += msgSnap.docs.length;
+          totalMessages += msgSnap.docs.length;
+        } catch (e) {
+          if (showLogs) {
+            print(
+              '  ⚠️  batch commit failed for $convId: $e — will retry on verification pass',
+            );
+          }
+          break;
         }
-        await batch.commit();
-
-        convMessages += msgSnap.docs.length;
-        totalMessages += msgSnap.docs.length;
 
         if (msgSnap.docs.length < _batchSize) break;
       }

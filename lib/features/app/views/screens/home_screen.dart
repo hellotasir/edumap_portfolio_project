@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:edumap_portfolio_project/core/services/cloud/subscription_guard_service.dart';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:edumap_portfolio_project/features/profile/views/screens/profile_settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -21,7 +22,6 @@ import 'package:edumap_portfolio_project/features/profile/repositories/profile_r
 import 'package:edumap_portfolio_project/features/profile/views/screens/profile_screen.dart';
 
 enum _HomeTab {
- 
   inbox(
     label: 'Inbox',
     icon: Icons.chat_bubble_outline_rounded,
@@ -70,6 +70,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   ProfileModel? _cachedProfile;
   Object? _profileError;
 
+  final _subscriptionGuard = SubscriptionGuardService();
+  StreamSubscription<bool>? _subscriptionSub;
+  bool _isSubscribed = false;
+
   @override
   void initState() {
     super.initState();
@@ -81,6 +85,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _profileSub?.cancel();
+    _subscriptionSub?.cancel();
     super.dispose();
   }
 
@@ -95,6 +100,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
       setState(() => _profileError = 'Invalid collection path.');
       return;
     }
+
     _profileStream = FirebaseFirestore.instance
         .collection(collectionPath)
         .where('user_id', isEqualTo: userId)
@@ -104,6 +110,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
           if (snapshot.docs.isEmpty) return null;
           return _profileRepository.fromSnapshot(snapshot.docs.first);
         });
+
     _profileSub = _profileStream!.listen(
       (profile) {
         if (!mounted) return;
@@ -117,7 +124,28 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
         setState(() => _profileError = error);
       },
     );
+
+    _subscriptionSub?.cancel();
+    _subscriptionSub = _subscriptionGuard
+        .watchSubscriptionActive(userId)
+        .listen((isActive) {
+          if (!mounted) return;
+          setState(() {
+            _isSubscribed = isActive;
+            if (!isActive &&
+                (_currentTab == _HomeTab.location ||
+                    _currentTab == _HomeTab.ai)) {
+              _currentTab = _HomeTab.inbox;
+            }
+          });
+        });
   }
+
+  List<_HomeTab> get _visibleTabs => [
+    _HomeTab.inbox,
+    if (_isSubscribed) _HomeTab.location,
+    if (_isSubscribed) _HomeTab.ai,
+  ];
 
   Widget _buildPage(_HomeTab tab, ProfileModel profile) {
     return switch (tab) {
@@ -142,7 +170,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
   }
 
   void _onTabTapped(int index) {
-    final tab = _HomeTab.values[index];
+    final tab = _visibleTabs[index];
     if (tab == _currentTab) return;
     HapticFeedback.selectionClick();
     setState(() => _currentTab = tab);
@@ -173,6 +201,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             snapshot.connectionState == ConnectionState.waiting &&
             profile == null;
         final hasError = _profileError != null || snapshot.hasError;
+
+        final selectedIndex = _visibleTabs
+            .indexOf(_currentTab)
+            .clamp(0, (_visibleTabs.length - 1).clamp(0, 2));
 
         return NetworkWidget(
           child: Scaffold(
@@ -222,21 +254,23 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
                 colorScheme: colorScheme,
               ),
             ),
-            bottomNavigationBar: NavigationBar(
-              selectedIndex: _currentTab.index,
-              onDestinationSelected: _onTabTapped,
-              labelBehavior:
-                  NavigationDestinationLabelBehavior.onlyShowSelected,
-              destinations: _HomeTab.values
-                  .map(
-                    (tab) => NavigationDestination(
-                      icon: Icon(tab.icon),
-                      selectedIcon: Icon(tab.selectedIcon),
-                      label: tab.label,
-                    ),
+            bottomNavigationBar: _visibleTabs.length >= 2
+                ? NavigationBar(
+                    selectedIndex: selectedIndex,
+                    onDestinationSelected: _onTabTapped,
+                    labelBehavior:
+                        NavigationDestinationLabelBehavior.onlyShowSelected,
+                    destinations: _visibleTabs
+                        .map(
+                          (tab) => NavigationDestination(
+                            icon: Icon(tab.icon),
+                            selectedIcon: Icon(tab.selectedIcon),
+                            label: tab.label,
+                          ),
+                        )
+                        .toList(),
                   )
-                  .toList(),
-            ),
+                : null,
           ),
         );
       },
@@ -260,6 +294,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen>
             _profileError = null;
             _cachedProfile = null;
           });
+          _subscriptionSub?.cancel();
           _profileSub?.cancel();
           _initProfileStream();
         },
