@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
+import 'package:edumap_portfolio_project/features/chat/utils/call_utils.dart';
 import 'package:flutter/material.dart';
 import 'package:edumap_portfolio_project/features/chat/views/screens/call_screen.dart';
 import 'package:edumap_portfolio_project/features/chat/models/chat_message_model.dart';
@@ -729,9 +730,9 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               AppNavigator(
                 screen: CallScreen(
-                  userID: _otherUserId,
-                  userName: _otherUsername,
-                  callID: _otherUserId,
+                  userID: widget.currentUserId,
+                  userName: widget.currentUsername,
+                  callID: generateCallID(widget.currentUserId, _otherUserId), 
                   isVideoCall: false,
                 ),
               ).navigate(context);
@@ -742,9 +743,9 @@ class _ChatScreenState extends State<ChatScreen> {
             onPressed: () {
               AppNavigator(
                 screen: CallScreen(
-                  userID: _otherUserId,
-                  userName: _otherUsername,
-                  callID: _otherUserId,
+                  userID: widget.currentUserId,
+                  userName: widget.currentUsername,
+                  callID: generateCallID(widget.currentUserId, _otherUserId), 
                   isVideoCall: true,
                 ),
               ).navigate(context);

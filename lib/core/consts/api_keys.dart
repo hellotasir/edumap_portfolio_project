@@ -7,3 +7,5 @@ final String urlTemplate = dotenv.env['URL_TEMPLATE']!;
 final String openStreetMapApiUrl = dotenv.env['OPEN_STREET_MAP_API_URL']!;
 final String supabaseGoogleClientIdWeb =
     dotenv.env['SUPABASE_GOOGLE_CLIENT_ID_WEB']!;
+final String zegoAppId = dotenv.env['ZEGO_APP_ID']!;
+final String zegoAppSign = dotenv.env['ZEGO_APP_SIGN']!;

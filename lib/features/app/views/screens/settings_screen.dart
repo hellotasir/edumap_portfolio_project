@@ -17,7 +17,7 @@ import 'package:edumap_portfolio_project/features/app/views/widgets/others/about
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.profile});
 
   final ProfileModel profile;
@@ -27,9 +27,41 @@ class SettingsScreen extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final AuthRepository authRepository = AuthRepository();
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
 
+class _SettingsScreenState extends State<SettingsScreen> {
+  final AuthRepository _authRepository = AuthRepository();
+  bool _isSigningOut = false;
+
+  Future<void> _handleSignOut() async {
+    if (_isSigningOut) return;
+
+    setState(() => _isSigningOut = true);
+
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      final userId = user?.id;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('background_service_user_id');
+      FirestoreListenerService.instance.stopListening();
+      if (userId != null) {
+        await FcmTokenService.instance.removeToken(userId);
+      }
+      await _authRepository.logout();
+      if (mounted) {
+        AppNavigator(screen: LoginScreen()).navigate(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackbarWidget(message: 'Logout failed').showSnackbar(context);
+        setState(() => _isSigningOut = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return NetworkWidget(
       child: Scaffold(
         appBar: AppBar(
@@ -46,7 +78,7 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.person,
               label: 'Profile Settings',
               onTap: () => AppNavigator(
-                screen: ProfileSettingsScreen(profile: profile),
+                screen: ProfileSettingsScreen(profile: widget.profile),
               ).navigate(context),
             ),
             const SectionHeader(label: 'Account'),
@@ -59,9 +91,8 @@ class SettingsScreen extends StatelessWidget {
             SettingsTile(
               icon: Icons.manage_accounts_outlined,
               label: 'Account Settings',
-              onTap: () => AccountSheet.show(context, authRepository),
+              onTap: () => AccountSheet.show(context, _authRepository),
             ),
-
             const SectionHeader(label: 'Preferences'),
             SettingsTile(
               icon: Icons.dark_mode_outlined,
@@ -77,7 +108,7 @@ class SettingsScreen extends StatelessWidget {
             SettingsTile(
               icon: Icons.feedback_outlined,
               label: 'Send Feedback',
-              onTap: () => FeedbackScreen.open(context, authRepository),
+              onTap: () => FeedbackScreen.open(context, _authRepository),
             ),
             SettingsTile(
               icon: Icons.info_outlined,
@@ -89,24 +120,17 @@ class SettingsScreen extends StatelessWidget {
               icon: Icons.logout_rounded,
               label: 'Sign Out',
               color: Colors.red.shade600,
-              onTap: () async {
-                try {
-                  final user = Supabase.instance.client.auth.currentUser;
-                  final userId = user?.id;
-                  final prefs = await SharedPreferences.getInstance();
-                  await prefs.remove('background_service_user_id');
-                  FirestoreListenerService.instance.stopListening();
-                  if (userId != null) {
-                    await FcmTokenService.instance.removeToken(userId);
-                  }
-                  await authRepository.logout();
-                  AppNavigator(screen: LoginScreen()).navigate(context);
-                } catch (e) {
-                  SnackbarWidget(
-                    message: 'Logout failed',
-                  ).showSnackbar(context);
-                }
-              },
+              onTap: _handleSignOut,
+              trailing: _isSigningOut
+                  ? SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.red.shade600,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(height: 32),
           ],
@@ -139,7 +163,6 @@ Future<T?> openFullSheet<T>(
     ),
   );
 }
-
 
 class SheetScaffold extends StatelessWidget {
   const SheetScaffold({
@@ -205,7 +228,6 @@ class SheetScaffold extends StatelessWidget {
     );
   }
 }
-
 
 class SectionHeader extends StatelessWidget {
   const SectionHeader({super.key, required this.label});

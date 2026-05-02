@@ -1,6 +1,6 @@
+import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
 
 class CallScreen extends StatelessWidget {
@@ -17,8 +17,8 @@ class CallScreen extends StatelessWidget {
   final String callID;
   final bool isVideoCall;
 
-  int get _appID => int.parse(dotenv.env['ZEGO_APP_ID']!);
-  String get _appSign => dotenv.env['ZEGO_APP_SIGN']!;
+  int get _appID => int.parse(zegoAppId);
+  String get _appSign => zegoAppSign;
 
   @override
   Widget build(BuildContext context) {
