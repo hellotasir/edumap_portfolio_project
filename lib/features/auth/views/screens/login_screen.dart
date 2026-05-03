@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
@@ -69,12 +67,23 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   void _showSnackbar(String message) =>
       SnackbarWidget(message: message).showSnackbar(context);
 
+  bool _isValidEmail(String email) =>
+      RegExp(r'^[^@]+@[^@]+\.[^@]+').hasMatch(email);
+
   Future<void> _login() async {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
     if (email.isEmpty || password.isEmpty) {
       _showSnackbar('Please fill in all fields');
+      return;
+    }
+    if (!_isValidEmail(email)) {
+      _showSnackbar('Please enter a valid email address');
+      return;
+    }
+    if (password.length < 6) {
+      _showSnackbar('Password must be at least 6 characters');
       return;
     }
 
@@ -187,7 +196,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                         ),
                       ),
                     ),
-
                     const SizedBox(height: 28),
                     SizedBox(
                       width: double.infinity,
@@ -282,4 +290,3 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     );
   }
 }
-

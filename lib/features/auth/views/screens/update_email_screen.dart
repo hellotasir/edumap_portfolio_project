@@ -1,5 +1,3 @@
-// ignore_for_file: use_build_context_synchronously
-
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:edumap_portfolio_project/features/auth/repositories/auth_repository.dart';
@@ -43,7 +41,6 @@ class _UpdateEmailScreenState extends ConsumerState<UpdateEmailScreen> {
     super.dispose();
   }
 
-
   Future<void> _updateEmail() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -64,7 +61,6 @@ class _UpdateEmailScreenState extends ConsumerState<UpdateEmailScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return NetworkWidget(
@@ -77,10 +73,10 @@ class _UpdateEmailScreenState extends ConsumerState<UpdateEmailScreen> {
           ),
         ),
         body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: _emailUpdated ? _buildSuccessView() : _buildFormView(),
-            ),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: _emailUpdated ? _buildSuccessView() : _buildFormView(),
+          ),
         ),
       ),
     );
