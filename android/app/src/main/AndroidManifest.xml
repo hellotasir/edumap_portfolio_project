@@ -18,7 +18,7 @@
         android:name="${applicationName}"
         android:label="EDUMAP"
         android:icon="@mipmap/ic_launcher"
-        android:usesCleartextTraffic="true">
+        android:usesCleartextTraffic="false">
 
         <activity
             android:name=".MainActivity"

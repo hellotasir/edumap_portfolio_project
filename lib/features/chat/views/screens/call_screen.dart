@@ -2,8 +2,9 @@ import 'package:edumap_portfolio_project/core/consts/api_keys.dart';
 import 'package:edumap_portfolio_project/features/app/views/widgets/others/network_widget.dart';
 import 'package:flutter/material.dart';
 import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class CallScreen extends StatelessWidget {
+class CallScreen extends StatefulWidget {
   const CallScreen({
     super.key,
     required this.userID,
@@ -17,21 +18,54 @@ class CallScreen extends StatelessWidget {
   final String callID;
   final bool isVideoCall;
 
+  @override
+  State<CallScreen> createState() => _CallScreenState();
+}
+
+class _CallScreenState extends State<CallScreen> {
+  String? _appSign;
+  bool _loading = true;
+
   int get _appID => int.parse(zegoAppId);
-  String get _appSign => zegoAppSign;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAppSign();
+  }
+
+  Future<void> _fetchAppSign() async {
+    final supabase = Supabase.instance.client;
+
+    try {
+      final res = await supabase.functions.invoke(
+        'zego-secret',
+        method: HttpMethod.post,
+      );
+
+      setState(() {
+        _appSign = res.data['zegoAppSign'];
+        _loading = false;
+      });
+    } catch (e) {
+      debugPrint('Error: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    if (_loading || _appSign == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+
     return NetworkWidget(
       child: ZegoUIKitPrebuiltCall(
         appID: _appID,
-        appSign: _appSign,
-        userID: userID,
-        userName: userName,
-        callID: callID,
-
-        config: isVideoCall ? _videoCallConfig() : _voiceCallConfig(),
-
+        appSign: _appSign!,
+        userID: widget.userID,
+        userName: widget.userName,
+        callID: widget.callID,
+        config: widget.isVideoCall ? _videoCallConfig() : _voiceCallConfig(),
         events: ZegoUIKitPrebuiltCallEvents(
           onHangUpConfirmation: (event, defaultAction) async {
             final result = await _showEndDialog(context);

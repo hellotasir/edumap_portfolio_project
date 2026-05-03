@@ -24,11 +24,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 final _errorHandler = ErrorHandler.instance;
 
+
 void main() {
   runZonedGuarded(
     () async {
       WidgetsFlutterBinding.ensureInitialized();
-      await dotenv.load(fileName: '.env.development');
+      final envFile = getEnvFile();
+      await dotenv.load(fileName: envFile);
+      validateEnvironmentVariables();
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
