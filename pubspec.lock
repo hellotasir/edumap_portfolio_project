@@ -894,10 +894,10 @@ packages:
     dependency: "direct main"
     description:
       name: genkit
-      sha256: ccc84935593e6f12447c8d4b27034fceb4573cbc3d51b76d32aa9bbbf8d3badd
+      sha256: "071f516b9d8000110eb69243cfceea7e307a7b8f7e8b412983caf36696cdbbf9"
       url: "https://pub.dev"
     source: hosted
-    version: "0.12.1"
+    version: "0.13.0"
   geoclue:
     dependency: transitive
     description:
