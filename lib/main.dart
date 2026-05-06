@@ -31,6 +31,9 @@ void main() {
       WidgetsFlutterBinding.ensureInitialized();
       final envFile = getEnvFile();
       await dotenv.load(fileName: envFile);
+      if (dotenv.env.isEmpty) {
+  throw Exception("ENV NOT LOADED");
+}
       validateEnvironmentVariables();
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
