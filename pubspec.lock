@@ -45,10 +45,10 @@ packages:
     dependency: "direct main"
     description:
       name: app_badge_plus
-      sha256: dab607342bbf73b33a532e384117ccb13efbaabadb6058c40fd74d743b0ef1ab
+      sha256: c0d9e318d0c516764945d0d1997d4e99e9b7d26523e8404a35c70c9fe5ec249b
       url: "https://pub.dev"
     source: hosted
-    version: "1.2.9"
+    version: "1.2.10"
   app_links:
     dependency: transitive
     description:
@@ -1062,10 +1062,10 @@ packages:
     dependency: transitive
     description:
       name: gtk
-      sha256: e8ce9ca4b1df106e4d72dad201d345ea1a036cc12c360f1a7d5a758f78ffa42c
+      sha256: "4ff85b2a16724029dd9e5bbb5a94b6918f9973f74ba571c949d2002801879cf5"
       url: "https://pub.dev"
     source: hosted
-    version: "2.1.0"
+    version: "2.2.0"
   hooks:
     dependency: transitive
     description:
@@ -2328,10 +2328,10 @@ packages:
     dependency: transitive
     description:
       name: url_launcher_web
-      sha256: d0412fcf4c6b31ecfdb7762359b7206ffba3bbffd396c6d9f9c4616ece476c1f
+      sha256: "85c81589622fbc87c1c683aaea164d3604a7777495a79d91e39ffcdec39ddb34"
       url: "https://pub.dev"
     source: hosted
-    version: "2.4.2"
+    version: "2.4.3"
   url_launcher_windows:
     dependency: transitive
     description:
