@@ -45,4 +45,8 @@ Demo Images:
 ![Demo](edumap/presentation/p1.png)
 ![Demo](edumap/presentation/p2.png)
 
-[Screenshots](edumap/screenshots)
+Screenshots:
+[App Screenshots](edumap/screenshots)
+
+📄 License
+This project is licensed under the terms of the [MIT License](edumap/notes/README.md).
