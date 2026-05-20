@@ -42,7 +42,7 @@ Some backend services may be:
 ### Project Maintenance duration : Life-time (May 1, 2026)
 
 Demo Images:
-![Demo](https://github.com/hellotasir/edumap_portfolio_project/edumap/presentation/p1.png)
-![Demo](https://github.com/hellotasir/edumap_portfolio_project/edumap/presentation/p2.png)
+![Demo](https://raw.githubusercontent.com/hellotasir/edumap_portfolio_project/edumap/presentation/p1.png)
+![Demo](https://raw.githubusercontent.com/hellotasir/edumap_portfolio_project/edumap/presentation/p2.png)
 
-![Screenshots](https://github.com/hellotasir/edumap_portfolio_project/edumap/screenshots)
+[Screenshots](https://github.com/hellotasir/edumap_portfolio_project/tree/master/edumap/screenshots)
