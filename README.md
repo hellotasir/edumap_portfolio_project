@@ -38,6 +38,11 @@ Some backend services may be:
 - Disabled after evaluation 
 - Some bugs may still exist but solved once identified.
 
-## Project Development duration : 2 months (March 16, 2026 - April 30, 2026)
-## Project Maintenance duration : Life-time (May 1, 2026)
+### Project Development duration : 2 months (March 16, 2026 - April 30, 2026)
+### Project Maintenance duration : Life-time (May 1, 2026)
 
+Demo Images:
+![Demo](https://github.com/hellotasir/edumap_portfolio_project/edumap/presentation/p1.png)
+![Demo](https://github.com/hellotasir/edumap_portfolio_project/edumap/presentation/p2.png)
+
+![Screenshots](https://github.com/hellotasir/edumap_portfolio_project/edumap/screenshots)
